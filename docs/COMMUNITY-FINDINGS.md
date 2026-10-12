@@ -170,7 +170,31 @@ r33051-f5dae5ece4, built 2026-09-14, "old revisions" variant):
   PhoenixCard (Windows). A RAW image starts with zeros and has `55AA` at
   0x1FE.
 
-## 7. Other A523/A527/T527 work worth following
+## 7. Vendor-kernel OpenWrt builds and their Wi-Fi firmware
+
+- [Misaka-Nnnnq/openwrt `23.05-cubie-a5e`](https://github.com/Misaka-Nnnnq/openwrt/tree/23.05-cubie-a5e)
+  (2025-02, mirrored as `hmmmonteiro/openwrt-cubie-a5e`): OpenWrt 23.05
+  around the vendor (Tina) BSP kernel (`aw_bsp_cubie_a5e`,
+  `target/linux/cubiea5e`), not mainline. The ImmortalWrt images with
+  working Wi-Fi reported on 4PDA (vendor kernel 6.6, 290 Mbit/s WPA2) come
+  from this vendor-kernel line, not from mainline builds.
+- Its `aic8800-firmware` (`aic8800d80/`, userconfig dated 2022/08/03)
+  differs from the radxa-pkg firmware this project ships (checked by md5):
+  `fmacfw_8800d80_u02.bin`, `fw_patch_8800d80_u02.bin`,
+  `fw_patch_table_8800d80_u02.bin`, `lmacfw_rf_8800d80_u02.bin` and
+  `aic_userconfig_8800d80.txt` differ, `fw_adid_8800d80_u02.bin` is the
+  same. It also has an `aic_userconfig_8800d80-ht.txt` variant. A
+  firmware A/B test (vendor-kernel set vs radxa-pkg set) is a candidate
+  step for the cold-start and throughput problems (§2).
+- A secondary summary (an AI-generated research report shared by the
+  project owner) also mentions setting `country` and a fixed channel in
+  `/etc/config/wireless` for the vendor-kernel Wi-Fi to come up. Not
+  verified; to be covered by the test plan (AP with country set vs unset).
+  Several other claims of that report did not match the sources (Wi-Fi
+  chip named as Realtek, OpenWrt 23.05 as the latest stable, no mention of
+  openwrt/openwrt#23296) and are not used here.
+
+## 8. Other A523/A527/T527 work worth following
 
 | Link | What |
 |---|---|
