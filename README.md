@@ -73,7 +73,7 @@ release notes say which one to flash.
 | `config/diffconfig` | build configuration |
 | `scripts/check-image.py` | checks of the built image (DTB in the FIT image, rootfs, kernel config) |
 | `.github/workflows/build.yml` | the build: PR #23296 at a pinned commit, our files, `make`, checks |
-| `docs/` | [porting notes](docs/PORTING-NOTES.md), [community findings](docs/COMMUNITY-FINDINGS.md); test plan and driver audit to follow |
+| `docs/` | [roadmap](docs/ROADMAP.md), [porting notes](docs/PORTING-NOTES.md), [community findings](docs/COMMUNITY-FINDINGS.md); test plan and driver audit to follow |
 
 The build runs on GitHub's runners or on a self-hosted runner
 (`workflow_dispatch` input `runner`). Packages are signed with the
@@ -82,16 +82,22 @@ throw-away key is used and nothing is published.
 
 ## Plan
 
-1. Image that boots, with Wi-Fi — current step.
-2. Signed apk repository on GitHub Pages with all kmods of this kernel.
-3. Image checks in CI (started: `scripts/check-image.py`).
-4. First boot: Wi-Fi access point "A5E" with a placeholder password and a
-   LuCI warning until it is changed.
-5. Image contents as in the Orange Pi Zero 3 project (LuCI, WireGuard/
-   AmneziaWG, sing-box, modems, USB Ethernet/Wi-Fi, NVMe).
-6. Rolling and fixed releases with notes.
-7. After Wi-Fi works on hardware: audit of the aic8800 driver.
-8. Later: Cubie A5E and aic8800 upstream in OpenWrt.
+Full plan with tasks and status: [docs/ROADMAP.md](docs/ROADMAP.md).
+
+1. First image that builds — in progress.
+2. First boot on hardware: both Ethernet ports, USB, NVMe, reboot,
+   sysupgrade.
+3. Wi-Fi: AP and client, 2.4 and 5 GHz, WPA2/WPA3, cold start.
+4. Own SDK, ImageBuilder and signed apk repository with all kmods of this
+   kernel; driver fixes delivered by `apk upgrade`.
+5. Image contents as in the Orange Pi Zero 3 project; first boot with the
+   "A5E" access point and a LuCI password warning.
+6. Test plan, `main` branch, beta releases.
+7. AIC8800 driver audit and fixes.
+8. One image for all memory types (several DRAM sets in U-Boot).
+9. USB 3.0 image variant.
+10. Upstream: reports and fixes for openwrt/openwrt#23296; after the merge,
+    the official snapshot plus only the Wi-Fi driver from here.
 
 ## Acknowledgements
 
