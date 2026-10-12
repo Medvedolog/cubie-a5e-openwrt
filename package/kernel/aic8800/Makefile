@@ -90,12 +90,18 @@ NOSTDINC_FLAGS:= \
 	-include backport/backport.h \
 	-DBUILD_OPENWRT
 
+# CFLAGS_MODULE=-Wno-error (cubie-a5e-openwrt): the 6.18 module build runs
+# with -Werror and the vendor code warns (missing prototypes, "defined" in
+# macro expansions). CFLAGS_MODULE comes last in Kbuild's c_flags, so it
+# overrides -Werror; the warnings stay in the build log for the driver audit.
+
 define Build/Compile
 
 ifneq ($(CONFIG_PACKAGE_kmod-aic8800-btusb),)
 	+$(KERNEL_MAKE) $(PKG_JOBS) \
 		M="$(PKG_BUILD_DIR)/src/USB/driver_fw/drivers/aic_btusb" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
+		CFLAGS_MODULE="-Wno-error" \
 		CONFIG_AIC_FW_PATH="/lib/firmware/aic8800/usb" \
 		modules
 endif
@@ -103,6 +109,7 @@ ifneq ($(CONFIG_PACKAGE_kmod-aic8800-sdio),)
 	+$(KERNEL_MAKE) $(PKG_JOBS) \
 		M="$(PKG_BUILD_DIR)/src/SDIO/driver_fw/driver/aic8800" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
+		CFLAGS_MODULE="-Wno-error" \
 		CONFIG_AIC_FW_PATH="/lib/firmware/aic8800/sdio" \
 		CONFIG_AIC8800_BTLPM_SUPPORT=n \
 		CONFIG_SDIO_BT=$(if $(CONFIG_AIC8800_SDIO_BT_SUPPORT),y,n) \
@@ -112,6 +119,7 @@ ifneq ($(CONFIG_PACKAGE_kmod-aic8800-pcie),)
 	+$(KERNEL_MAKE) $(PKG_JOBS) \
 		M="$(PKG_BUILD_DIR)/src/PCIE/driver_fw/driver/aic8800/aic8800_fdrv" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
+		CFLAGS_MODULE="-Wno-error" \
 		CONFIG_AIC_FW_PATH="/lib/firmware/aic8800/pcie" \
 		modules
 endif
@@ -119,6 +127,7 @@ ifneq ($(CONFIG_PACKAGE_kmod-aic8800-usb),)
 	+$(KERNEL_MAKE) $(PKG_JOBS) \
 		M="$(PKG_BUILD_DIR)/src/USB/driver_fw/drivers/aic8800" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
+		CFLAGS_MODULE="-Wno-error" \
 		CONFIG_AIC_FW_PATH="/lib/firmware/aic8800/usb" \
 		modules
 endif
