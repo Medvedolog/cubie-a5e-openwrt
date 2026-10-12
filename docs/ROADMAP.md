@@ -82,7 +82,7 @@ Exit: an AP and a client work after cold and warm boots on the test board.
 
 The kernel is ours, so kmods from downloads.openwrt.org do not fit it.
 
-- [ ] Repository secret `APK_SIGN_KEY` (EC P-256, created by the owner;
+- [x] Repository secret `APK_SIGN_KEY` (EC P-256, created by the owner;
   never stored in the repository).
 - [ ] Build with `CONFIG_SDK`, `CONFIG_IB`, `CONFIG_ALL_KMODS`: every kmod
   of this kernel is published.
