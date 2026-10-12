@@ -58,7 +58,10 @@ The most important finding for "the image boots".
   (`…radxa_cubie-a5e-dram-<profile>-…`).
 - Related: Armbian enables CLDO3 (SD card power) explicitly in U-Boot
   SPL on the AXP717 (`sunxi-board-cldo3-fix.patch`) and runs the DRAM at
-  936 MHz in its defconfig.
+  936 MHz in its defconfig. The fallback patch plus 936 MHz is what
+  community members describe as "Armbian's bootloader that boots any
+  revision"; this project's `dram-universal` image uses the same two
+  changes (patches 420 and 421).
 - Board revisions mentioned: V1.1, V1.2 (box labels v1.202, v1.204;
   model RS500-D4E0J0R38S16). The 1 GB boards are reported to boot only
   vendor (PhoenixCard/IMAGEWTY) images so far.

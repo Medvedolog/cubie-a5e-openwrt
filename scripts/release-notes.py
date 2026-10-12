@@ -15,15 +15,15 @@ import os
 import re
 
 MAINLINE = (
-    "Mainline U-Boot timings, with the fallback set. For memory without a "
-    "profile of its own.",
-    "Параметры mainline U-Boot с запасным набором. Для памяти без своего "
-    "профиля.",
+    "Universal: mainline U-Boot timings at 936 MHz with the fallback set "
+    "(as Armbian). Start with this one.",
+    "Универсальный: параметры mainline U-Boot на 936 МГц с запасным "
+    "набором (как в Armbian). Начинайте с него.",
 )
 
 
 def profile_info(dram_dir, name):
-    if name == "mainline":
+    if name == "universal":
         return MAINLINE, None
     path = os.path.join(dram_dir, name + ".conf")
     if not os.path.exists(path):
@@ -58,7 +58,7 @@ def main():
         m = re.search(r"-dram-(.+?)-(ext4|squashfs)-sdcard\.img\.gz$", os.path.basename(i))
         if m:
             variants.setdefault(m.group(1), {})[m.group(2)] = os.path.basename(i)
-    order = ["mainline"] + sorted(v for v in variants if v != "mainline")
+    order = ["universal"] + sorted(v for v in variants if v != "universal")
 
     out = []
     w = out.append
@@ -80,19 +80,20 @@ def main():
     w("## Which image / какой образ\n")
     w("The images differ **only in the DRAM timings of U-Boot**; kernel, "
       "packages and settings are the same. Pick the profile of your memory "
-      "chips; if your board does not start, try `dram-mainline` and send a "
-      "UART log.\n")
+      "chips, or `universal` if there is none; if your board does not "
+      "start, send a UART log.\n")
     w("Образы отличаются **только параметрами DRAM в U-Boot**; ядро, пакеты и "
-      "настройки одинаковые. Берите профиль своей памяти; если плата не "
-      "стартует, попробуйте `dram-mainline` и пришлите лог UART.\n")
-    w("| Profile / профиль | For / для | TPR6 / TPR10 / TPR11 / TPR12 | ext4 | squashfs |")
+      "настройки одинаковые. Берите профиль своей памяти или `universal`, если "
+      "его нет; если плата не стартует, пришлите лог UART.\n")
+    w("| Profile / профиль | For / для | TPR6 / TPR10 / TPR11 / TPR12, DRAM clock | ext4 | squashfs |")
     w("|---|---|---|---|---|")
     for name in order:
         if name not in variants:
             continue
         (en, ru), vals = profile_info(a.dram_dir, name)
-        tpr = ("0x38000000 / 0x802f3333 / 0xc7c5c4c2 / 0x3533302f" if name == "mainline"
-               else " / ".join(vals.get(k, "?") for k in ("TPR6", "TPR10", "TPR11", "TPR12")))
+        tpr = ("0x38000000 / 0x802f3333 / 0xc7c5c4c2 / 0x3533302f, 936 MHz" if name == "universal"
+               else " / ".join(vals.get(k, "?") for k in ("TPR6", "TPR10", "TPR11", "TPR12"))
+               + ", %s MHz" % vals.get("CLK", "936"))
         desc = en if en == ru else "%s<br>%s" % (en, ru)
 
         def link(kind):

@@ -85,6 +85,12 @@ jobs:
             gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
             python3-setuptools python3-dev rsync swig unzip zlib1g-dev file wget \
             zstd ccache device-tree-compiler mtools fdisk u-boot-tools
+          # U-Boot's host dtc links libyaml when the host has it and then
+          # fails against OpenWrt's host flags (run 4); OpenWrt's build
+          # hosts do not have it either
+          if dpkg -s libyaml-dev >/dev/null 2>&1; then
+            sudo apt-get remove -y libyaml-dev
+          fi
 
       - name: OpenWrt sources
         id: src
@@ -209,8 +215,9 @@ jobs:
           path: openwrt/.ccache
           key: ccache-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ github.run_id }}
 
-      # The image above has the mainline DRAM timings (plus the fallback set
-      # of patch 420). DRAM timings depend on the memory chips of the board
+      # The image above is the "universal" one: mainline DRAM timings at
+      # 936 MHz (patch 421) with the fallback set of patch 420, as Armbian.
+      # DRAM timings depend on the memory chips of the board
       # (docs/COMMUNITY-FINDINGS.md §1): for each profile in config/dram,
       # only U-Boot is rebuilt and the image is assembled again.
       - name: Images per DRAM profile
@@ -220,7 +227,7 @@ jobs:
           OUT=bin/targets/$TARGET/$SUBTARGET
           IMG=../images
           mkdir -p "$IMG"
-          PATCH=package/boot/uboot-sunxi/patches/421-dram-profile.patch
+          PATCH=package/boot/uboot-sunxi/patches/430-dram-profile.patch
           ubootcfg() {
             find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 2 -name .config | head -1
           }
@@ -228,13 +235,13 @@ jobs:
             local name=$1 f b cfg
             cfg=$(ubootcfg)
             test -n "$cfg"
-            grep -E '^CONFIG_DRAM_SUNXI_TPR(6|10|11|12)(_ALT)?=' "$cfg" | tee "$IMG/u-boot-dram-$name.txt"
+            grep -E '^CONFIG_DRAM_(CLK|SUNXI_TPR(6|10|11|12)(_ALT)?)=' "$cfg" | tee "$IMG/u-boot-dram-$name.txt"
             for f in "$OUT"/*radxa_cubie-a5e*-sdcard.img.gz; do
               b=$(basename "$f")
               cp "$f" "$IMG/${b/radxa_cubie-a5e/radxa_cubie-a5e-dram-$name}"
             done
           }
-          save mainline
+          save universal
           for conf in ../config/dram/*.conf; do
             name=$(basename "$conf" .conf)
             echo "::group::DRAM profile $name"
@@ -250,6 +257,9 @@ jobs:
               grep -qx "CONFIG_DRAM_SUNXI_$k=$want" "$IMG/u-boot-dram-$name.txt" ||
                 { echo "U-Boot of $name lacks $k=$want"; exit 1; }
             done
+            want=$(sed -n 's/^CLK=//p' "$conf"); want=${want:-936}
+            grep -qx "CONFIG_DRAM_CLK=$want" "$IMG/u-boot-dram-$name.txt" ||
+              { echo "U-Boot of $name lacks CONFIG_DRAM_CLK=$want"; exit 1; }
             echo "::endgroup::"
           done
           rm -f "$PATCH"

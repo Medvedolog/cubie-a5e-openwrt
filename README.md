@@ -44,7 +44,7 @@ repository (planned, see below).
 **Board revisions and RAM.** Owners report that mainline U-Boot does not
 boot every revision: the DRAM timings depend on the memory chips. This
 build adds a fallback parameter set and one image per known memory
-profile (`dram-mainline`, `dram-micron-4g-m6`, …); boards that still do
+profile (`dram-universal`, `dram-micron-4g-m6`, …); boards that still do
 not boot need a UART log (see [docs/COMMUNITY-FINDINGS.md](docs/COMMUNITY-FINDINGS.md#1-boot-dram-parameters-depend-on-the-board-revision)).
 
 **USB 3.0 or NVMe.** The A527 has one combo PHY shared by the M.2 slot and
@@ -60,7 +60,7 @@ is planned ([PORTING-NOTES §4](docs/PORTING-NOTES.md#4-usb-what-works-and-what-
 - Later: the rolling `cubie-a5e-snapshot-latest` from `main` and fixed
   releases with notes (`docs/releases/`).
 
-Each build has **one image per DRAM profile** (`…-dram-mainline-…`,
+Each build has **one image per DRAM profile** (`…-dram-universal-…`,
 `…-dram-micron-4g-m6-…`); they differ only in U-Boot's memory timings. The
 release notes say which one to flash.
 

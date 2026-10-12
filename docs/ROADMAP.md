@@ -34,7 +34,7 @@ verified on hardware** until a stage says so, with a report from a board.
   GitHub or self-hosted runner, a new push waits for the running build.
 - [x] Wi-Fi power sequence (patch 950), AIC8800 package, PCI feature for
   NVMe, U-Boot DRAM fallback (420).
-- [x] One image per DRAM profile (`config/dram/*.conf`): `mainline`,
+- [x] One image per DRAM profile (`config/dram/*.conf`): `universal`,
   `micron-4g-m6`.
 - [x] Image checks (`scripts/check-image.py`): DTB in the FIT image, U-Boot,
   partitions, rootfs contents, kernel options.

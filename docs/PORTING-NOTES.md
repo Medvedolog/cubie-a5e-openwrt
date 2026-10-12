@@ -107,15 +107,26 @@ U-Boot 2026.04, where `mctl_calc_size()` already returns 0 on a failed
 check. Details and the values owners have read from their boards:
 [COMMUNITY-FINDINGS §1](COMMUNITY-FINDINGS.md#1-boot-dram-parameters-depend-on-the-board-revision).
 
+### U-Boot: DRAM at 936 MHz (`421-configs-radxa-cubie-a5e-dram-clk-936.patch`)
+
+Armbian's U-Boot for this board is the mainline defconfig plus two
+changes: the fallback set of patch 420 (byte-identical to ours) and
+`CONFIG_DRAM_CLK=936` instead of the A523 default of 1200 MHz
+(`edit-radxa-cubie-a5e-defconfig.patch`). The lower clock gives the fixed
+timings more margin, which is what lets one bootloader start more board
+revisions. Patch 421 does the same; the `dram-universal` image is this
+configuration. A profile may set its own clock (`CLK=` in its `.conf`):
+`micron-4g-m6` keeps 1200 MHz, where its TPR11/TPR12 were trained.
+
 ### U-Boot: one image per DRAM profile (`config/dram/*.conf`)
 
 The fallback above only acts when the memory check fails. Boards that
 pass it with the mainline timings and hang later need their own values,
 so the build makes one image per profile: after the main build, U-Boot is
-rebuilt with `421-dram-profile.patch` (generated from the profile by
-`scripts/dram-profile-patch.py`, applied after 420 so the fallback set
-stays) and the image is assembled again. Images:
-`…radxa_cubie-a5e-dram-mainline-…` (mainline timings) and
+rebuilt with `430-dram-profile.patch` (generated from the profile by
+`scripts/dram-profile-patch.py`, applied after 420 and 421 so the
+fallback set stays) and the image is assembled again. Images:
+`…radxa_cubie-a5e-dram-universal-…` (mainline timings at 936 MHz with the fallback set) and
 `…radxa_cubie-a5e-dram-<profile>-…`. The CI checks that each U-Boot
 `.config` carries the profile's TPR values.
 

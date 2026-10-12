@@ -1,0 +1,23 @@
+From: cubie-a5e-openwrt <noreply@github.com>
+Subject: configs: radxa-cubie-a5e: DRAM at 936 MHz
+
+As Armbian does for this board
+(patch/u-boot/v2026.07-sunxi64/board_radxa-cubie-a5e/edit-radxa-cubie-a5e-defconfig.patch):
+936 MHz instead of the A523 default of 1200 MHz gives the DRAM timings
+more margin, so that one set (with the fallback of patch 420) fits more
+board revisions and memory chips. Profiles in config/dram can set
+another clock (patch 430).
+
+---
+diff --git a/configs/radxa-cubie-a5e_defconfig b/configs/radxa-cubie-a5e_defconfig
+index 3dc3b6c..1492e3f 100644
+--- a/configs/radxa-cubie-a5e_defconfig
++++ b/configs/radxa-cubie-a5e_defconfig
+@@ -2,6 +2,7 @@ CONFIG_ARM=y
+ CONFIG_ARCH_SUNXI=y
+ CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun55i-a527-cubie-a5e"
+ CONFIG_SPL=y
++CONFIG_DRAM_CLK=936
+ CONFIG_DRAM_SUNXI_DX_ODT=0x07070707
+ CONFIG_DRAM_SUNXI_DX_DRI=0x0d0d0d0d
+ CONFIG_DRAM_SUNXI_CA_DRI=0x0e0e
