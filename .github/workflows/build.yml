@@ -148,7 +148,7 @@ jobs:
           make defconfig
           ./scripts/diffconfig.sh > ../diffconfig.effective
           # what has to survive defconfig
-          for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE \
+          for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE CONFIG_CCACHE \
                    CONFIG_PACKAGE_kmod-aic8800-sdio CONFIG_PACKAGE_aic8800-sdio-firmware \
                    CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls \
                    CONFIG_PACKAGE_u-boot-radxa-cubie-a5e \
