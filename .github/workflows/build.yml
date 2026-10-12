@@ -209,12 +209,58 @@ jobs:
           path: openwrt/.ccache
           key: ccache-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ github.run_id }}
 
-      - name: Validate image
+      # The image above has the mainline DRAM timings (plus the fallback set
+      # of patch 420). DRAM timings depend on the memory chips of the board
+      # (docs/COMMUNITY-FINDINGS.md §1): for each profile in config/dram,
+      # only U-Boot is rebuilt and the image is assembled again.
+      - name: Images per DRAM profile
         working-directory: openwrt
         run: |
+          set -o pipefail
           OUT=bin/targets/$TARGET/$SUBTARGET
-          ls -lh "$OUT"
-          python3 ../scripts/check-image.py --out "$OUT" --profile "$PROFILE" \
+          IMG=../images
+          mkdir -p "$IMG"
+          PATCH=package/boot/uboot-sunxi/patches/421-dram-profile.patch
+          ubootcfg() {
+            find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 2 -name .config | head -1
+          }
+          save() {
+            local name=$1 f b cfg
+            cfg=$(ubootcfg)
+            test -n "$cfg"
+            grep -E '^CONFIG_DRAM_SUNXI_TPR(6|10|11|12)(_ALT)?=' "$cfg" | tee "$IMG/u-boot-dram-$name.txt"
+            for f in "$OUT"/*radxa_cubie-a5e*-sdcard.img.gz; do
+              b=$(basename "$f")
+              cp "$f" "$IMG/${b/radxa_cubie-a5e/radxa_cubie-a5e-dram-$name}"
+            done
+          }
+          save mainline
+          for conf in ../config/dram/*.conf; do
+            name=$(basename "$conf" .conf)
+            echo "::group::DRAM profile $name"
+            python3 ../scripts/dram-profile-patch.py "$conf" "$PATCH"
+            make package/boot/uboot-sunxi/clean >/dev/null
+            make -j"$(nproc)" package/boot/uboot-sunxi/compile > "../logs/uboot-$name.log" 2>&1 ||
+              { tail -50 "../logs/uboot-$name.log"; exit 1; }
+            make -j"$(nproc)" target/linux/install > "../logs/image-$name.log" 2>&1 ||
+              { tail -50 "../logs/image-$name.log"; exit 1; }
+            save "$name"
+            for k in TPR6 TPR10 TPR11 TPR12; do
+              want=$(sed -n "s/^$k=//p" "$conf")
+              grep -qx "CONFIG_DRAM_SUNXI_$k=$want" "$IMG/u-boot-dram-$name.txt" ||
+                { echo "U-Boot of $name lacks $k=$want"; exit 1; }
+            done
+            echo "::endgroup::"
+          done
+          rm -f "$PATCH"
+          cp "$OUT"/*radxa_cubie-a5e.manifest "$OUT"/*.buildinfo "$IMG/"
+          (cd "$IMG" && sha256sum *.img.gz > sha256sums)
+          ls -lh "$IMG"
+
+      - name: Validate images
+        working-directory: openwrt
+        run: |
+          python3 ../scripts/check-image.py --out ../images --profile "$PROFILE" \
             --build-dir "build_dir/target-${ARCH_PACKAGES}_musl" | tee ../logs/check-image.txt
 
       - name: Build info
@@ -244,9 +290,7 @@ jobs:
           name: cubie-a5e-image
           if-no-files-found: error
           path: |
-            openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/*radxa_cubie-a5e*
-            openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/sha256sums
-            openwrt/bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/*.buildinfo
+            images/
             build-info.txt
 
       - uses: actions/upload-artifact@v4

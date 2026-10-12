@@ -43,8 +43,9 @@ repository (planned, see below).
 
 **Board revisions and RAM.** Owners report that mainline U-Boot does not
 boot every revision: the DRAM timings depend on the memory chips. This
-build adds a fallback parameter set; boards that still do not boot need a
-UART log (see [docs/COMMUNITY-FINDINGS.md](docs/COMMUNITY-FINDINGS.md#1-boot-dram-parameters-depend-on-the-board-revision)).
+build adds a fallback parameter set and one image per known memory
+profile (`dram-mainline`, `dram-micron-4g-m6`, …); boards that still do
+not boot need a UART log (see [docs/COMMUNITY-FINDINGS.md](docs/COMMUNITY-FINDINGS.md#1-boot-dram-parameters-depend-on-the-board-revision)).
 
 **USB 3.0 or NVMe.** The A527 has one combo PHY shared by the M.2 slot and
 the USB 3.0 port (hardware limit). This image uses it for PCIe (M.2 NVMe),

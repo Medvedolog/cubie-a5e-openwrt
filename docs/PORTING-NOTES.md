@@ -107,6 +107,21 @@ U-Boot 2026.04, where `mctl_calc_size()` already returns 0 on a failed
 check. Details and the values owners have read from their boards:
 [COMMUNITY-FINDINGS §1](COMMUNITY-FINDINGS.md#1-boot-dram-parameters-depend-on-the-board-revision).
 
+### U-Boot: one image per DRAM profile (`config/dram/*.conf`)
+
+The fallback above only acts when the memory check fails. Boards that
+pass it with the mainline timings and hang later need their own values,
+so the build makes one image per profile: after the main build, U-Boot is
+rebuilt with `421-dram-profile.patch` (generated from the profile by
+`scripts/dram-profile-patch.py`, applied after 420 so the fallback set
+stays) and the image is assembled again. Images:
+`…radxa_cubie-a5e-dram-mainline-…` (mainline timings) and
+`…radxa_cubie-a5e-dram-<profile>-…`. The CI checks that each U-Boot
+`.config` carries the profile's TPR values.
+
+Profiles: `micron-4g-m6` — Micron 4 GB on a V1.1 board (this project's
+test board), read back from the vendor U-Boot with `sunxi_dram_para`.
+
 ### Kernel config: `CONFIG_RESET_GPIO` must stay off
 
 With `RESET_GPIO` enabled, `pwrseq_simple` asks the reset framework for its
