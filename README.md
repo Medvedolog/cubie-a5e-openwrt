@@ -60,9 +60,11 @@ is planned ([PORTING-NOTES §4](docs/PORTING-NOTES.md#4-usb-what-works-and-what-
 - Later: the rolling `cubie-a5e-snapshot-latest` from `main` and fixed
   releases with notes (`docs/releases/`).
 
-Each build has **one image per DRAM profile** (`…-dram-universal-…`,
-`…-dram-micron-4g-m6-…`); they differ only in U-Boot's memory timings. The
-release notes say which one to flash.
+**Flash `…-dram-universal-…` first**: one image for all board revisions,
+like Armbian's (mainline DRAM timings at 936 MHz plus a fallback set). The
+other images (`…-dram-micron-4g-m6-…`, …) are fallbacks tuned to one memory
+type for boards that do not start with it; they differ only in U-Boot's
+DRAM settings.
 
 ## Repository layout
 

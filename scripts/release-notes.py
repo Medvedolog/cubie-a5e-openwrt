@@ -15,10 +15,10 @@ import os
 import re
 
 MAINLINE = (
-    "Universal: mainline U-Boot timings at 936 MHz with the fallback set "
-    "(as Armbian). Start with this one.",
-    "Универсальный: параметры mainline U-Boot на 936 МГц с запасным "
-    "набором (как в Armbian). Начинайте с него.",
+    "**Main image** for all revisions: mainline timings at 936 MHz with the "
+    "fallback set (as Armbian).",
+    "**Основной образ** для всех ревизий: параметры mainline на 936 МГц с "
+    "запасным набором (как в Armbian).",
 )
 
 
@@ -78,13 +78,20 @@ def main():
         w("<details><summary>Build / сборка</summary>\n\n```\n%s\n```\n</details>\n" % info)
 
     w("## Which image / какой образ\n")
-    w("The images differ **only in the DRAM timings of U-Boot**; kernel, "
-      "packages and settings are the same. Pick the profile of your memory "
-      "chips, or `universal` if there is none; if your board does not "
-      "start, send a UART log.\n")
-    w("Образы отличаются **только параметрами DRAM в U-Boot**; ядро, пакеты и "
-      "настройки одинаковые. Берите профиль своей памяти или `universal`, если "
-      "его нет; если плата не стартует, пришлите лог UART.\n")
+    w("**Start with `universal`.** One image for all board revisions, like "
+      "Armbian's: mainline U-Boot DRAM timings at 936 MHz with a fallback set "
+      "that is tried when the memory check fails. The other images are "
+      "**fallbacks** for boards that do not start with it: they differ only in "
+      "U-Boot's DRAM settings (kernel, packages and settings are the same) and "
+      "are tuned to one memory type. Please report which image started on "
+      "your board, and send the UART log if `universal` did not.\n")
+    w("**Начинайте с `universal`.** Один образ для всех ревизий платы, как у "
+      "Armbian: параметры DRAM mainline U-Boot на 936 МГц и запасной набор, "
+      "который пробуется, если проверка памяти не прошла. Остальные образы — "
+      "**запасные** для плат, которые с ним не стартуют: отличаются только "
+      "настройками DRAM в U-Boot (ядро, пакеты и настройки те же) и "
+      "подобраны под конкретную память. Напишите, какой образ запустился на "
+      "вашей плате, а если `universal` не стартовал — пришлите лог UART.\n")
     w("| Profile / профиль | For / для | TPR6 / TPR10 / TPR11 / TPR12, DRAM clock | ext4 | squashfs |")
     w("|---|---|---|---|---|")
     for name in order:
