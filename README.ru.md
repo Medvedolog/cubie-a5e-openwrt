@@ -2,21 +2,26 @@
 
 **[English version](README.md)**
 
-Чистая сборка OpenWrt для Radxa Cubie A5E: OpenWrt main, собранный из
-исходников на GitHub Actions, со встроенным Wi-Fi (AIC8800D80, SDIO),
-обоими гигабитными портами, USB и M.2 NVMe.
+Чистая сборка OpenWrt для Radxa Cubie A5E: OpenWrt main с поддержкой A527,
+которая пока на рецензии, собранный из исходников на GitHub Actions, со
+встроенным Wi-Fi (AIC8800D80, SDIO), обоими гигабитными портами, USB и
+M.2 NVMe.
 
 > **Статус: первые сборки. На железе ещё ничего не проверено.**
 > Таблица ниже обновляется только по отчётам с логами с платы.
 
 ## Почему сборка из исходников
 
-В OpenWrt main есть платформа sunxi на ядре 6.18, но нет Allwinner A527 и
-профиля Cubie A5E; в OpenWrt 25.12 (ядро 6.12) A527 нет совсем.
-Официального ядра для этой платы нет, значит, нет и официального
-ImageBuilder: образ собирается из исходников OpenWrt на зафиксированном
-коммите, поддержка A527 и драйвер Wi-Fi взяты из ImmortalWrt (подробности —
-[docs/PORTING-NOTES.md](docs/PORTING-NOTES.md), по-английски).
+В OpenWrt пока нет Allwinner A527. Поддержка на рецензии:
+[openwrt/openwrt#23296](https://github.com/openwrt/openwrt/pull/23296)
+«sunxi: add support for A527/T527 boards» от мейнтейнера sunxi (новая
+подцель `cortexa55`, профиль `radxa_cubie-a5e`). Проект собирает эту ветку
+на зафиксированном коммите и добавляет то, чего в ней нет для этой платы:
+драйвер Wi-Fi AIC8800 (из ImmortalWrt), последовательность включения Wi-Fi,
+запасной набор параметров DRAM для разных ревизий, пакеты NVMe
+([docs/PORTING-NOTES.md](docs/PORTING-NOTES.md), по-английски). Когда PR
+примут, сборка перейдёт на официальный snapshot, а здесь останется только
+драйвер Wi-Fi — как в проекте для Orange Pi Zero 3.
 
 Следствие: **kmod с downloads.openwrt.org к этому ядру не подходят.**
 Все kmod для него будут опубликованы, подписанными, в собственном
@@ -57,11 +62,11 @@ BSP Radxa по умолчанию; порты USB-A работают как USB 
 
 | Путь | Что |
 |---|---|
-| `target/`, `package/` | файлы, добавляемые в дерево OpenWrt: патчи и драйверы ядра для A527, патчи U-Boot/TF-A, пакет `aic8800` |
-| `patches/openwrt/` | изменения файлов OpenWrt (конфиг ядра, устройство `radxa_cubie-a5e`, board.d) |
+| `target/`, `package/` | файлы, добавляемые в дерево OpenWrt: последовательность включения Wi-Fi (DTS), запасной набор DRAM в U-Boot, пакет `aic8800` |
+| `patches/openwrt/` | изменения файлов дерева OpenWrt (возможность PCI у подцели) |
 | `config/diffconfig` | конфигурация сборки |
 | `scripts/check-image.py` | проверки собранного образа (DTB в FIT, rootfs, конфиг ядра) |
-| `.github/workflows/build.yml` | сборка: OpenWrt на зафиксированном коммите, наши файлы, `make`, проверки |
+| `.github/workflows/build.yml` | сборка: PR #23296 на зафиксированном коммите, наши файлы, `make`, проверки |
 | `docs/` | [заметки о портировании](docs/PORTING-NOTES.md), [находки сообщества](docs/COMMUNITY-FINDINGS.md); план тестов и аудит драйвера — позже |
 
 Сборка идёт на раннерах GitHub или на своём (self-hosted) раннере —
@@ -84,13 +89,13 @@ BSP Radxa по умолчанию; порты USB-A работают как USB 
 
 ## Благодарности
 
-- [ImmortalWrt](https://github.com/immortalwrt/immortalwrt): поддержка
-  A523/A527, профиль Cubie A5E и пакет `aic8800`, на которых основана
-  сборка.
+- [OpenWrt](https://openwrt.org) и мейнтейнер sunxi Zoltan Herpai за
+  поддержку A527/T527, на которой основана сборка.
+- [ImmortalWrt](https://github.com/immortalwrt/immortalwrt): пакет
+  `aic8800` и первая поддержка A527/Cubie A5E.
 - [Radxa](https://github.com/radxa): плата, BSP и
   [radxa-pkg/aic8800](https://github.com/radxa-pkg/aic8800).
 - Разработчики поддержки Allwinner sun55i (A523/A527/T527) в mainline Linux.
-- [OpenWrt](https://openwrt.org).
 
 ## Лицензия
 

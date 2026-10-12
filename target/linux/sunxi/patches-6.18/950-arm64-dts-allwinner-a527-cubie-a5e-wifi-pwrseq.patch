@@ -1,9 +1,9 @@
 From: cubie-a5e-openwrt <noreply@github.com>
 Subject: arm64: dts: allwinner: a527-cubie-a5e: Wi-Fi power sequence
 
-ImmortalWrt's 131-01 adds the mmc1 node and the PL7 3.3 V switch for the
-AIC8800D80 module. Two more bits come from the Radxa BSP device tree
-(radxa/allwinner-device, configs/cubie_a5e/linux-5.15/board.dts):
+Patch 701 of the sunxi A527 series enables mmc1 for the AIC8800D80
+module with the PL7 3.3 V switch. Two more bits come from the Radxa BSP
+device tree (radxa/allwinner-device, configs/cubie_a5e/linux-5.15/board.dts):
 
  - WL_REG_ON is PM1 ("wlan_regon = <&r_pio PM 1 GPIO_ACTIVE_HIGH>"):
    drive it with mmc-pwrseq-simple instead of relying on its state after
@@ -16,7 +16,7 @@ Not yet verified on hardware.
 
 ---
 diff --git a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
-index ee7b254..8245bf2 100644
+index 9b85296..9befa0d 100644
 --- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
 @@ -61,6 +61,16 @@
@@ -36,12 +36,12 @@ index ee7b254..8245bf2 100644
  	reg_vcc5v: vcc5v {
  		/* board wide 5V supply from the USB-C connector */
  		compatible = "regulator-fixed";
-@@ -224,6 +234,8 @@
- 
+@@ -229,6 +239,8 @@
  &mmc1 {
+ 	bus-width = <4>;
  	vmmc-supply = <&reg_3v3_wifi>;
 +	vqmmc-supply = <&reg_bldo1>;
 +	mmc-pwrseq = <&wifi_pwrseq>;
- 	bus-width = <4>;
  	non-removable;
  	// todo: investigate why clock above 40MHz makes data errors
+ 	max-frequency = <35000000>;

@@ -2,21 +2,26 @@
 
 **[Русская версия / Russian version](README.ru.md)**
 
-A clean OpenWrt build for the Radxa Cubie A5E: OpenWrt main built from
-source on GitHub Actions, with the onboard Wi-Fi (AIC8800D80, SDIO), both
-Gigabit Ethernet ports, USB and M.2 NVMe.
+A clean OpenWrt build for the Radxa Cubie A5E: OpenWrt main with the A527
+support that is under review, built from source on GitHub Actions, with
+the onboard Wi-Fi (AIC8800D80, SDIO), both Gigabit Ethernet ports, USB and
+M.2 NVMe.
 
 > **Status: first builds. Nothing has been tested on hardware yet.**
 > The table below is updated only from reports with logs from a board.
 
 ## Why a source build
 
-OpenWrt main has the sunxi target on Linux 6.18, but no Allwinner A527 and
-no Cubie A5E profile; OpenWrt 25.12 (Linux 6.12) has no A527 at all. There
-is no official kernel for this board, so no official ImageBuilder either:
-the image is built from OpenWrt sources at a pinned commit, with the A527
-support and the Wi-Fi driver from ImmortalWrt (details in
-[docs/PORTING-NOTES.md](docs/PORTING-NOTES.md)).
+OpenWrt has no Allwinner A527 yet. The support is in review:
+[openwrt/openwrt#23296](https://github.com/openwrt/openwrt/pull/23296)
+"sunxi: add support for A527/T527 boards" by the sunxi maintainer (new
+`cortexa55` subtarget, `radxa_cubie-a5e` profile). This project builds that
+branch at a pinned commit and adds what it lacks for this board: the
+AIC8800 Wi-Fi driver (from ImmortalWrt), the Wi-Fi power sequence, a DRAM
+fallback for more board revisions, NVMe packages
+([docs/PORTING-NOTES.md](docs/PORTING-NOTES.md)). Once the PR is merged the
+build moves to the official snapshot and keeps only the Wi-Fi driver here,
+as the Orange Pi Zero 3 project does.
 
 Consequence: **kmods from downloads.openwrt.org do not fit this kernel.**
 All kmods for it will be published, signed, in this project's own apk
@@ -56,11 +61,11 @@ boots on a board.
 
 | Path | What |
 |---|---|
-| `target/`, `package/` | files added to the OpenWrt tree: A527 kernel patches and drivers, U-Boot/TF-A patches, the `aic8800` package |
-| `patches/openwrt/` | changes to OpenWrt files (kernel config, the `radxa_cubie-a5e` device, board.d) |
+| `target/`, `package/` | files added to the OpenWrt tree: Wi-Fi power sequence (DTS), U-Boot DRAM fallback, the `aic8800` package |
+| `patches/openwrt/` | changes to files of the OpenWrt tree (PCI feature of the subtarget) |
 | `config/diffconfig` | build configuration |
 | `scripts/check-image.py` | checks of the built image (DTB in the FIT image, rootfs, kernel config) |
-| `.github/workflows/build.yml` | the build: OpenWrt at a pinned commit, our files, `make`, checks |
+| `.github/workflows/build.yml` | the build: PR #23296 at a pinned commit, our files, `make`, checks |
 | `docs/` | [porting notes](docs/PORTING-NOTES.md), [community findings](docs/COMMUNITY-FINDINGS.md); test plan and driver audit to follow |
 
 The build runs on GitHub's runners or on a self-hosted runner
@@ -83,14 +88,14 @@ throw-away key is used and nothing is published.
 
 ## Acknowledgements
 
+- [OpenWrt](https://openwrt.org) and its sunxi maintainer Zoltan Herpai
+  for the A527/T527 support this build is based on.
 - [ImmortalWrt](https://github.com/immortalwrt/immortalwrt): the
-  A523/A527 target support, the Cubie A5E profile and the `aic8800` package
-  this build is based on.
+  `aic8800` package and the first A527/Cubie A5E support.
 - [Radxa](https://github.com/radxa): the board, the BSP and
   [radxa-pkg/aic8800](https://github.com/radxa-pkg/aic8800).
 - The mainline Linux developers of the Allwinner sun55i (A523/A527/T527)
   support.
-- [OpenWrt](https://openwrt.org).
 
 ## License
 

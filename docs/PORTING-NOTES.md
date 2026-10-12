@@ -8,64 +8,39 @@ section says so.
 
 | Tree | Kernel | A527 / Cubie A5E |
 |---|---|---|
-| OpenWrt main (`66ee7b6950a8`) | sunxi on 6.18.55 | no `sun55i-a527`, no profile, no AIC8800 driver; A523 clocks off in the kernel config |
+| OpenWrt main | sunxi on 6.18 | nothing for A527 yet |
+| [openwrt/openwrt#23296](https://github.com/openwrt/openwrt/pull/23296) "sunxi: add support for A527/T527 boards" (Zoltan Herpai, sunxi maintainer; open since 2026-05-11, last rework 2026-09-27) | 6.18.52 | new subtarget `cortexa55`, profiles `radxa_cubie-a5e` and `yuzukihd_avaota-a1`, TF-A and U-Boot for A523, DTS backports, IOMMU, PCIe, combo PHY, Wi-Fi node on mmc1; **no Wi-Fi driver** |
+| ImmortalWrt master (`da63f7d6ac42`) | 6.18.55 | the same A527 parts on the `cortexa53` subtarget, plus the `aic8800` package, MAXIO PHY, cpufreq |
 | OpenWrt 25.12 | 6.12 | nothing for A527 |
-| ImmortalWrt master (`da63f7d6ac42`) | sunxi on 6.18.55 | `Device/sun55i-a527`, `Device/radxa_cubie-a5e`, `package/kernel/aic8800`, A523 U-Boot and TF-A, PCIe/combo PHY drivers |
 | Linux 6.18 (mainline) | — | `sun55i-a527-cubie-a5e.dts` with gmac0, USB2, microSD; no Wi-Fi node, no second GMAC, no PCIe, no USB3 |
 
-There is no official kernel with A527 support, so the official
-ImageBuilder/SDK cannot be used: the image is built from the OpenWrt
-sources. OpenWrt main and ImmortalWrt master share the kernel (6.18.55),
-U-Boot (2026.04), TF-A (2.14) and mac80211 backports (7.2), so ImmortalWrt's
-A527 parts apply to OpenWrt main without rebasing. This was checked locally:
-all generic and sunxi kernel patches plus ours apply to Linux 6.18.55, and
-the Cubie A5E device tree compiles.
+There is no official kernel with A527 support yet, so the official
+ImageBuilder/SDK cannot be used: the image is built from source.
 
-## 2. What is taken from ImmortalWrt
+**Base: the branch of PR #23296**, pinned to `5035e7d51ae5`. The aim is to
+differ as little as possible from what is expected to become official
+OpenWrt: same subtarget (`cortexa55`, packages `aarch64_cortex-a55`),
+same profile, same kernel patches. When the PR is merged, the build moves
+to the official snapshot (and later the ImageBuilder) and keeps only the
+Wi-Fi driver in this project's repository — as the Orange Pi Zero 3
+project does. The first build of this project (run 1) used the
+ImmortalWrt parts on OpenWrt main instead; it is kept as a reference in
+the git history.
 
-Files are copied unchanged, with their authorship headers. The OpenWrt tree
-changes are in `patches/openwrt/0001-*.patch`.
+## 2. What we add to the PR branch
 
-### Kernel (`target/linux/sunxi/patches-6.18`, `files/`)
-
-| Patches | What | Why we need it |
+| Where | What | Why |
 |---|---|---|
-| 011, 012, 013, 030-01…07 | AXP717 type-C, A523 SPI/SPDIF, DTS backports from 6.19: GMAC200, DMA, I2S, SPDIF, SPI nodes | 031-01 (second Ethernet) builds on the GMAC200 node |
-| 031-01 | Cubie A5E: second Ethernet port (GMAC200 + MAXIO MAE0621A PHY), mainline v6.19 | eth1 (WAN) |
-| 702, 703 | MAXIO PHY driver and its LEDs | the PHY of both ports on this board |
-| 120 | pinctrl: pins calculation on re-probe | generic fix |
-| 121-01…03 | A523 clocks: cpufreq, regmap gate, USB3 ref clock/reset | CPU frequency scaling, PCIe/USB3 combo PHY clock |
-| 122-01…03, 130-02 | AXP717 dual/tri-phase DCDC | CPU supply on the A527 |
-| 123-*, 130-01 | thermal sensor (THS0/1) | temperature |
-| 124 + `files/drivers/iommu` | sun55i IOMMU | PCIe DMA |
-| 125 + `files/drivers/phy/allwinner/sunxi-inno-combophy.c` | INNO PCIe/USB3 combo PHY | M.2 NVMe |
-| 126 + `files/drivers/pci/pcie-sunxi` | DesignWare PCIe RC for sun55i | M.2 NVMe |
-| 130-03, 130-04 | CPU OPP table; IOMMU, combo PHY, PCIe nodes in the dtsi | |
-| 131-01 | Cubie A5E: Wi-Fi on mmc1 (PL7 3.3 V switch, 35 MHz, drive strength 40), CPU supplies, Bluetooth UART1 | Wi-Fi |
-| 131-02 | Cubie A5E: combo PHY in PCIe mode, PCIe slot power, GMA340 lane switch to PCIe | M.2 NVMe |
-| 314 | LED aliases (status LED), PHY LEDs | OpenWrt LED triggers |
+| `patches/openwrt/0001` | `cortexa55/target.mk`: `FEATURES += pci pcie` | the PR builds the PCIe driver but does not declare the feature, so `kmod-nvme` cannot be selected |
+| `target/linux/sunxi/patches-6.18/950-*` | Wi-Fi power sequence on PM1, BLDO1 as vqmmc (below) | the PR's mmc1 node (patch 701) has neither |
+| `package/boot/uboot-sunxi/patches/420-*` | DRAM fallback parameters (below) | the PR's open blocker: 1 GB boards do not boot |
+| `package/kernel/aic8800` | ImmortalWrt's AIC8800 package | the PR has the Wi-Fi node but no driver |
+| `config/diffconfig` | image contents | |
 
-Not taken: 102/103/313 (Orange Pi Zero 2/3 Wi-Fi and LEDs), 910/911 (H5/H616
-OPPs) — other boards.
-
-### Kernel config (`patches/openwrt/0001`)
-
-ImmortalWrt's `target/linux/sunxi/{config-6.18,cortexa53/config-6.18}`
-differences: A523 CCU/pinctrl, `DWMAC_SUN55I`, `MAXIO_PHY`, IOMMU, PCIe
-(`PCIE_SUN55I_RC`, `AW_INNO_COMBOPHY`), `USB_DWC3`/`USB_XHCI_*`, schedutil.
-`cortexa53/target.mk` gets `FEATURES += pci pcie` (needed by `kmod-nvme`).
-
-### Image, U-Boot, TF-A
-
-- `Device/sun55i-a527` and `Device/radxa_cubie-a5e` in
-  `image/cortexa53.mk`. Device packages: `kmod-aic8800-sdio`,
-  `aic8800-sdio-firmware`, `kmod-nvme`, `wpad-mbedtls` (instead of
-  ImmortalWrt's `wpad-openssl`; OpenWrt's default is mbedTLS).
-- U-Boot 2026.04 `radxa-cubie-a5e_defconfig` (`U-Boot/radxa-cubie-a5e`,
-  `uEnv-a523.txt`) with ImmortalWrt's U-Boot patches for the second GMAC
-  and the MAXIO PHY.
-- TF-A 2.14 `PLAT=sun55i_a523` with ImmortalWrt's A523 patch set (100–107).
-- `board.d/02_network`: `radxa,cubie-a5e` → `eth0` LAN, `eth1` WAN.
+Not in the PR, available in ImmortalWrt, not taken for now: the MAXIO
+MAE0621A PHY driver (both ports reportedly work with the generic PHY
+driver), A523 cpufreq/OPP patches, AXP717 multi-phase DCDC. Candidates
+once the board runs.
 
 ### Wi-Fi driver (`package/kernel/aic8800`)
 
@@ -73,7 +48,8 @@ ImmortalWrt's package, unchanged: source
 `https://github.com/radxa-pkg/aic8800.git` at `89f865b80f5f` (2026-03-10),
 `kmod-aic8800-sdio` = `aic8800_bsp.ko` + `aic8800_fdrv.ko`, firmware in
 `/lib/firmware/aic8800/sdio`. Bluetooth (`AIC8800_SDIO_BT_SUPPORT`) is
-switched off in `config/diffconfig`.
+switched off in `config/diffconfig` (the package's Kconfig reports a
+recursive dependency around that option; harmless, to be cleaned up).
 
 Notes for the driver audit (step after the first boot):
 
@@ -89,8 +65,8 @@ Notes for the driver audit (step after the first boot):
     path still parses that table.
   - the vendor driver writes SDIO IO-pad delay registers (F0 0xF0/0xF1/
     0xF8) for every bus timing; on the sunxi MMC host this gave data CRC
-    errors outside DDR50. This may be what ImmortalWrt's "clock above
-    40 MHz makes data errors" (`max-frequency = <35000000>`) works around.
+    errors outside DDR50. This may be what the "clock above 40 MHz makes
+    data errors" comment (`max-frequency = <35000000>`) works around.
   - the chip may start in bus sleep; an explicit SDIO wakeup before the
     first firmware transfer avoided timeouts.
 
@@ -98,9 +74,9 @@ Notes for the driver audit (step after the first boot):
 
 ## 3. Our own changes
 
-### `900-arm64-dts-allwinner-a527-cubie-a5e-wifi-pwrseq.patch`
+### `950-arm64-dts-allwinner-a527-cubie-a5e-wifi-pwrseq.patch`
 
-ImmortalWrt's Wi-Fi node has no power sequence. The Radxa BSP device tree
+The PR's Wi-Fi node has no power sequence. The Radxa BSP device tree
 (`radxa/allwinner-device`, branch `device-a527`,
 `configs/cubie_a5e/linux-5.15/board.dts`) gives the module's control pins:
 
@@ -113,9 +89,11 @@ bt_rst_n      = <&r_pio PM 2 GPIO_ACTIVE_HIGH>;
 
 The patch adds `mmc-pwrseq-simple` on PM1 (WL_REG_ON) and BLDO1 as
 `vqmmc-supply` of mmc1. Armbian's Cubie A5E Wi-Fi patch does the same
-(`patch/kernel/archive/sunxi-6.18/patches.backports/22-*`, `34-*`), and
+(`patch/kernel/archive/sunxi-6.18/patches.backports/22-*`, `34-*`), an
+OpenWrt 25.12.5 community image with this wiring reports a working AP, and
 testers report that without the PM1 sequence the module does not enumerate
-on mainline kernels.
+on mainline kernels. Checked locally: the PR's DTS patches plus 950 apply
+to the Linux 6.18 device tree and compile.
 
 ### U-Boot: DRAM fallback parameters (`420-sunxi-dram-a523-alternative-parameters.patch`)
 
@@ -143,7 +121,7 @@ With `RESET_GPIO` enabled, `pwrseq_simple` asks the reset framework for its
   (`BIAS_VOLTAGE_PIO_POW_MODE_CTL_INV` in `pinctrl-sun55i-a523*.c`).
 - Watchdog restart priority above PSCI, AXP717 soft power-off: needed on
   boards booting the vendor (BSP) BL31, whose PSCI `SYSTEM_RESET`/`OFF`
-  hang. This image uses mainline TF-A 2.14 with the A523 port; reboot and
+  hang. This image uses mainline TF-A 2.14 with the PR's A523 port; reboot and
   power-off are in the test plan, and these patches are the fallback.
 
 ## 4. USB: what works and what does not

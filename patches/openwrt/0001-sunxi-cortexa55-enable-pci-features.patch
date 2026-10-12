@@ -1,0 +1,19 @@
+From: cubie-a5e-openwrt <noreply@github.com>
+Subject: sunxi: cortexa55: enable the PCI/PCIe features
+
+The A527 has a PCIe root complex (the Cubie A5E M.2 slot) and PR #23296
+builds its driver (CONFIG_PCIE_SUN55I_RC=y), but the subtarget does not
+declare the pci/pcie features, so packages that depend on PCI_SUPPORT
+(kmod-nvme, pciutils) cannot be selected.
+
+---
+diff --git a/target/linux/sunxi/cortexa55/target.mk b/target/linux/sunxi/cortexa55/target.mk
+index 5941f31f..7ea23e68 100644
+--- a/target/linux/sunxi/cortexa55/target.mk
++++ b/target/linux/sunxi/cortexa55/target.mk
+@@ -8,4 +8,4 @@ ARCH:=aarch64
+ BOARDNAME:=Allwinner A52x/T52x (cortexa55)
+ CPU_TYPE:=cortex-a55
+ KERNELNAME:=Image dtbs
+-FEATURES+=fpu
++FEATURES+=fpu pci pcie

@@ -173,7 +173,7 @@ def check_image(img_gz, tmp):
 
 def check_kconfig(build_dir):
     print("== kernel config ==")
-    cfgs = glob.glob(os.path.join(build_dir, "linux-sunxi_cortexa53", "linux-*", ".config"))
+    cfgs = glob.glob(os.path.join(build_dir, "linux-sunxi_*", "linux-*", ".config"))
     if not check(len(cfgs) == 1, "kernel .config found"):
         return
     cfg = open(cfgs[0]).read().splitlines()
@@ -182,7 +182,6 @@ def check_kconfig(build_dir):
         "CONFIG_MMC_SUNXI": "y",
         "CONFIG_DWMAC_SUN55I": "y",
         "CONFIG_DWMAC_SUN8I": "y",
-        "CONFIG_MAXIO_PHY": "y",
         "CONFIG_SUN55I_A523_CCU": "y",
         "CONFIG_PINCTRL_SUN55I_A523": "y",
         "CONFIG_PINCTRL_SUN55I_A523_R": "y",
@@ -202,7 +201,7 @@ def check_kconfig(build_dir):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True, help="bin/targets/sunxi/cortexa53")
+    ap.add_argument("--out", required=True, help="bin/targets/sunxi/cortexa55")
     ap.add_argument("--profile", required=True)
     ap.add_argument("--build-dir", required=True, help="build_dir/target-...")
     a = ap.parse_args()

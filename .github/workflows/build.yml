@@ -1,14 +1,13 @@
 name: Build image (OpenWrt from source)
 
-# OpenWrt main has the sunxi target on Linux 6.18 but no Allwinner A527 and
-# no Cubie A5E profile, so there is no official kernel (and no ImageBuilder)
-# for this board: the image is built from the OpenWrt sources at a fixed
-# commit, with:
-#   target/, package/        files added to the OpenWrt tree (A523/A527
-#                            kernel patches, drivers, U-Boot and TF-A
-#                            patches, the aic8800 package)
-#   patches/openwrt/*.patch  changes to files of the OpenWrt tree (kernel
-#                            config, the radxa_cubie-a5e device, board.d)
+# OpenWrt main has no Allwinner A527 yet. The A527/T527 support (sunxi
+# cortexa55 subtarget, radxa_cubie-a5e profile, TF-A, U-Boot) is in the
+# open pull request openwrt/openwrt#23296 by the sunxi maintainer; the
+# image is built from that branch at a fixed commit, with:
+#   target/, package/        files added to the tree (Wi-Fi power
+#                            sequence DTS patch, U-Boot DRAM fallback,
+#                            the aic8800 package)
+#   patches/openwrt/*.patch  changes to files of the tree
 #   config/diffconfig        the build configuration
 # See docs/PORTING-NOTES.md for where each part comes from.
 #
@@ -44,17 +43,22 @@ on:
         type: boolean
         default: false
 
+# a build takes hours: a new push waits for the running build instead of
+# cancelling it (only the newest waiting run is kept)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   OPENWRT_REPO: https://github.com/openwrt/openwrt.git
-  # OpenWrt main, "uboot-rockchip: update to v2026.10" (2026-10-12):
-  # Linux 6.18.55, U-Boot 2026.04, TF-A 2.14, backports 7.2
-  OPENWRT_COMMIT: 66ee7b6950a8c5ff514a7f861b0e8420df2d644b
+  # openwrt/openwrt#23296 "sunxi: add support for A527/T527 boards"
+  # (Zoltan Herpai), head of 2026-09-27 "sunxi: add support for Avaota A1",
+  # on main of 2026-09-25: Linux 6.18.52, U-Boot 2026.04, TF-A 2.14
+  OPENWRT_PR: 23296
+  OPENWRT_COMMIT: 5035e7d51ae54590309cbcf36e638c783e7a0557
   TARGET: sunxi
-  SUBTARGET: cortexa53
+  SUBTARGET: cortexa55
+  ARCH_PACKAGES: aarch64_cortex-a55
   PROFILE: radxa_cubie-a5e
   DTB: sun55i-a527-cubie-a5e
 
@@ -90,7 +94,11 @@ jobs:
           rm -rf openwrt
           git init -q openwrt
           git -C openwrt remote add origin "$OPENWRT_REPO"
-          git -C openwrt fetch -q --depth 1 origin "$COMMIT"
+          # a commit of a pull request is fetched by its id; if GitHub
+          # refuses that, through the pull request's head
+          git -C openwrt fetch -q --depth 1 origin "$COMMIT" ||
+            git -C openwrt fetch -q --depth 50 origin "refs/pull/$OPENWRT_PR/head"
+          git -C openwrt checkout -q "$COMMIT" 2>/dev/null ||
           git -C openwrt checkout -q FETCH_HEAD
           test "$(git -C openwrt rev-parse HEAD)" = "$COMMIT"
           echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
@@ -140,7 +148,7 @@ jobs:
           make defconfig
           ./scripts/diffconfig.sh > ../diffconfig.effective
           # what has to survive defconfig
-          for c in CONFIG_TARGET_sunxi_cortexa53_DEVICE_$PROFILE \
+          for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE \
                    CONFIG_PACKAGE_kmod-aic8800-sdio CONFIG_PACKAGE_aic8800-sdio-firmware \
                    CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls \
                    CONFIG_PACKAGE_u-boot-radxa-cubie-a5e \
@@ -207,7 +215,7 @@ jobs:
           OUT=bin/targets/$TARGET/$SUBTARGET
           ls -lh "$OUT"
           python3 ../scripts/check-image.py --out "$OUT" --profile "$PROFILE" \
-            --build-dir "build_dir/target-aarch64_cortex-a53_musl" | tee ../logs/check-image.txt
+            --build-dir "build_dir/target-${ARCH_PACKAGES}_musl" | tee ../logs/check-image.txt
 
       - name: Build info
         if: always()
