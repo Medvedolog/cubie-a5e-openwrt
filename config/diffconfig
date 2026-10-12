@@ -1,0 +1,39 @@
+# Target: Radxa Cubie A5E only
+CONFIG_TARGET_sunxi=y
+CONFIG_TARGET_sunxi_cortexa53=y
+# CONFIG_TARGET_MULTI_PROFILE is not set
+CONFIG_TARGET_sunxi_cortexa53_DEVICE_radxa_cubie-a5e=y
+
+# image
+CONFIG_TARGET_ROOTFS_EXT4FS=y
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
+CONFIG_TARGET_ROOTFS_PARTSIZE=512
+CONFIG_TARGET_KERNEL_PARTSIZE=32
+CONFIG_SIGNED_PACKAGES=y
+CONFIG_CCACHE=y
+
+# onboard Wi-Fi: AIC8800D80 (SDIO); Bluetooth is out of scope
+CONFIG_PACKAGE_kmod-aic8800-sdio=y
+CONFIG_PACKAGE_aic8800-sdio-firmware=y
+# CONFIG_AIC8800_SDIO_BT_SUPPORT is not set
+CONFIG_PACKAGE_wpad-mbedtls=y
+# CONFIG_PACKAGE_wpad-basic-mbedtls is not set
+CONFIG_PACKAGE_iw=y
+CONFIG_PACKAGE_wireless-regdb=y
+
+# storage and USB (USB2 host ports; M.2 NVMe on the PCIe/USB3 combo PHY)
+CONFIG_PACKAGE_kmod-nvme=y
+CONFIG_PACKAGE_kmod-usb-core=y
+CONFIG_PACKAGE_kmod-usb2=y
+CONFIG_PACKAGE_kmod-usb-ohci=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-usb-storage-uas=y
+
+# web UI and tools for the first hardware report
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-ssl=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_pciutils=y
+CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_iperf3=y
+CONFIG_PACKAGE_nvme-cli=y

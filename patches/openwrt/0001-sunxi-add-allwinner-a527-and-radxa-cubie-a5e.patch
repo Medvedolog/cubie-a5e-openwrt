@@ -1,0 +1,339 @@
+From: cubie-a5e-openwrt <noreply@github.com>
+Subject: sunxi: add Allwinner A527 and the Radxa Cubie A5E
+
+Changes to files of the OpenWrt tree, taken from ImmortalWrt master
+(da63f7d6ac4207e534c9b92ba3d2b555a8edce8d) with their A523/A527 parts only:
+
+ - cortexa53: PCI/PCIe feature (M.2 NVMe), A523 clocks, pinctrl, IOMMU,
+   PCIe, combo PHY, DWMAC sun55i (GMAC200), MAXIO PHY in the kernel config
+ - image: sun55i-a527 SoC and the radxa_cubie-a5e device
+ - board.d: eth0 LAN, eth1 WAN
+ - U-Boot radxa-cubie-a5e (radxa-cubie-a5e_defconfig, uEnv-a523)
+ - TF-A sun55i_a523
+
+Not taken: ImmortalWrt's default package changes and the Orange Pi Zero
+UWE5622 device packages. The device installs wpad-mbedtls instead of
+ImmortalWrt's wpad-openssl.
+
+---
+diff --git a/package/boot/arm-trusted-firmware-sunxi/Makefile b/package/boot/arm-trusted-firmware-sunxi/Makefile
+index 1568568..b211285 100644
+--- a/package/boot/arm-trusted-firmware-sunxi/Makefile
++++ b/package/boot/arm-trusted-firmware-sunxi/Makefile
+@@ -26,6 +26,11 @@ define Trusted-Firmware-A/Default
+ 	BUILD_SUBTARGET:=cortexa53
+ endef
+ 
++define Trusted-Firmware-A/sunxi-a523
++	NAME:=Allwinner A523
++	PLAT:=sun55i_a523
++endef
++
+ define Trusted-Firmware-A/sunxi-a64
+ 	NAME:=Allwinner A64
+ 	PLAT:=sun50i_a64
+@@ -42,6 +47,7 @@ define Trusted-Firmware-A/sunxi-h616
+ endef
+ 
+ TFA_TARGETS:= \
++	sunxi-a523 \
+ 	sunxi-a64 \
+ 	sunxi-h6 \
+ 	sunxi-h616
+diff --git a/package/boot/uboot-sunxi/Makefile b/package/boot/uboot-sunxi/Makefile
+index d352ac7..e684d6f 100644
+--- a/package/boot/uboot-sunxi/Makefile
++++ b/package/boot/uboot-sunxi/Makefile
+@@ -439,6 +439,15 @@ define U-Boot/rongpin_rp_t113
+   UENV:=t113.ttyS3
+ endef
+ 
++define U-Boot/radxa-cubie-a5e
++  BUILD_SUBTARGET:=cortexa53
++  NAME:=Radxa Cubie A5E
++  BUILD_DEVICES:=radxa_cubie-a5e
++  DEPENDS:=+PACKAGE_u-boot-radxa-cubie-a5e:trusted-firmware-a-sunxi-a523
++  UENV:=a523
++  ATF:=a523
++endef
++
+ UBOOT_TARGETS := \
+ 	mangopi_mqdual_t113 \
+ 	myir_myd_t113x-emmc \
+@@ -500,7 +509,8 @@ UBOOT_TARGETS := \
+ 	Sinovoip_BPI_M3 \
+ 	sopine_baseboard \
+ 	orangepi_zero_plus \
+-	libretech_all_h3_cc_h5
++	libretech_all_h3_cc_h5 \
++	radxa-cubie-a5e
+ 
+ UBOOT_CONFIGURE_VARS += USE_PRIVATE_LIBGCC=yes
+ 
+diff --git a/target/linux/sunxi/base-files/etc/board.d/02_network b/target/linux/sunxi/base-files/etc/board.d/02_network
+index 073565d..84dd565 100644
+--- a/target/linux/sunxi/base-files/etc/board.d/02_network
++++ b/target/linux/sunxi/base-files/etc/board.d/02_network
+@@ -20,6 +20,7 @@ sunxi_setup_interfaces()
+ 	olimex,a13-olinuxino-micro)
+ 		ucidef_set_interface_lan "wlan0"
+ 		;;
++	radxa,cubie-a5e|\
+ 	xunlong,orangepi-r1)
+ 		ucidef_set_interfaces_lan_wan "eth0" "eth1"
+ 		;;
+diff --git a/target/linux/sunxi/config-6.18 b/target/linux/sunxi/config-6.18
+index 4fa5af6..0b9aa5e 100644
+--- a/target/linux/sunxi/config-6.18
++++ b/target/linux/sunxi/config-6.18
+@@ -38,6 +38,8 @@ CONFIG_ARM_PATCH_IDIV=y
+ CONFIG_ARM_PATCH_PHYS_VIRT=y
+ CONFIG_ARM_PSCI=y
+ CONFIG_ARM_PSCI_FW=y
++# CONFIG_ARM_SMMU_V3_PMU is not set
++# CONFIG_ARM_SUN8I_A33_MBUS_DEVFREQ is not set
+ CONFIG_ARM_THUMB=y
+ CONFIG_ARM_UNWIND=y
+ CONFIG_ARM_VIRT_EXT=y
+@@ -52,6 +54,7 @@ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_SD=y
+ CONFIG_BLK_PM=y
+ CONFIG_BOUNCE=y
++# CONFIG_BPF_LIRC_MODE2 is not set
+ CONFIG_BUFFER_HEAD=y
+ CONFIG_CACHE_L2X0=y
+ CONFIG_CAN=y
+@@ -87,6 +90,7 @@ CONFIG_CPU_FREQ_GOV_CONSERVATIVE=y
+ CONFIG_CPU_FREQ_GOV_ONDEMAND=y
+ CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
+ CONFIG_CPU_FREQ_GOV_POWERSAVE=y
++CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
+ CONFIG_CPU_FREQ_GOV_USERSPACE=y
+ CONFIG_CPU_FREQ_STAT=y
+ CONFIG_CPU_HAS_ASID=y
+@@ -136,6 +140,12 @@ CONFIG_DCACHE_WORD_ACCESS=y
+ CONFIG_DEBUG_BUGVERBOSE=y
+ CONFIG_DEBUG_LL_INCLUDE="mach/debug-macro.S"
+ CONFIG_DEBUG_MEMORY_INIT=y
++CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND=y
++# CONFIG_DEVFREQ_GOV_PERFORMANCE is not set
++# CONFIG_DEVFREQ_GOV_POWERSAVE is not set
++# CONFIG_DEVFREQ_GOV_USERSPACE is not set
++# CONFIG_DEVFREQ_GOV_PASSIVE is not set
++# CONFIG_DEVFREQ_THERMAL is not set
+ CONFIG_DMADEVICES=y
+ CONFIG_DMA_ENGINE=y
+ CONFIG_DMA_OF=y
+@@ -253,6 +263,11 @@ CONFIG_INPUT_MOUSEDEV_PSAUX=y
+ CONFIG_INPUT_MOUSEDEV_SCREEN_X=1024
+ CONFIG_INPUT_MOUSEDEV_SCREEN_Y=768
+ CONFIG_INPUT_TOUCHSCREEN=y
++# CONFIG_IOMMU_DEBUGFS is not set
++# CONFIG_IOMMU_IO_PGTABLE_ARMV7S is not set
++# CONFIG_IOMMU_IO_PGTABLE_DART is not set
++# CONFIG_IOMMU_IO_PGTABLE_LPAE_SELFTEST is not set
++# CONFIG_IOMMUFD is not set
+ CONFIG_IRQCHIP=y
+ CONFIG_IRQ_DOMAIN=y
+ CONFIG_IRQ_DOMAIN_HIERARCHY=y
+@@ -392,6 +407,7 @@ CONFIG_PINCTRL=y
+ CONFIG_PINCTRL_SUNXI=y
+ CONFIG_PM=y
+ CONFIG_PM_CLK=y
++# CONFIG_PM_DEVFREQ_EVENT is not set
+ CONFIG_PM_OPP=y
+ CONFIG_PM_SLEEP=y
+ CONFIG_PM_SLEEP_SMP=y
+@@ -519,6 +535,7 @@ CONFIG_TIMER_PROBE=y
+ CONFIG_TOUCHSCREEN_SUN4I=y
+ CONFIG_TREE_RCU=y
+ CONFIG_TREE_SRCU=y
++# CONFIG_UCLAMP_TASK is not set
+ CONFIG_UNCOMPRESS_INCLUDE="debug/uncompress.h"
+ CONFIG_UNWINDER_ARM=y
+ CONFIG_USB=y
+diff --git a/target/linux/sunxi/cortexa53/config-6.18 b/target/linux/sunxi/cortexa53/config-6.18
+index b90dd5a..8680596 100644
+--- a/target/linux/sunxi/cortexa53/config-6.18
++++ b/target/linux/sunxi/cortexa53/config-6.18
+@@ -17,6 +17,7 @@ CONFIG_ARCH_WANTS_NO_INSTR=y
+ CONFIG_ARCH_WANTS_THP_SWAP=y
+ CONFIG_ARM64=y
+ CONFIG_ARM64_4K_PAGES=y
++CONFIG_ARM64_BRBE=y
+ CONFIG_ARM64_ERRATUM_819472=y
+ CONFIG_ARM64_ERRATUM_824069=y
+ CONFIG_ARM64_ERRATUM_826319=y
+@@ -33,9 +34,18 @@ CONFIG_ARM64_VA_BITS_39=y
+ CONFIG_ARM64_WORKAROUND_CLEAN_CACHE=y
+ CONFIG_ARM_AMBA=y
+ CONFIG_ARM_ARCH_TIMER_OOL_WORKAROUND=y
++# CONFIG_ARM_CORESIGHT_PMU_ARCH_SYSTEM_PMU is not set
+ CONFIG_ARM_GIC_V3=y
+ CONFIG_ARM_GIC_V3_ITS=y
++CONFIG_ARM_SMCCC_SOC_ID=y
++CONFIG_ARM_SMMU=y
++CONFIG_ARM_SMMU_DISABLE_BYPASS_BY_DEFAULT=y
++# CONFIG_ARM_SMMU_LEGACY_DT_BINDINGS is not set
++CONFIG_ARM_SMMU_MMU_500_CPRE_ERRATA=y
++CONFIG_ARM_SMMU_V3=y
++# CONFIG_ARM_SMMU_V3_SVA is not set
+ CONFIG_AUDIT_ARCH_COMPAT_GENERIC=y
++CONFIG_AW_INNO_COMBOPHY=y
+ CONFIG_BUILTIN_RETURN_ADDRESS_STRIPS_PAC=y
+ CONFIG_CC_HAVE_SHADOW_CALL_STACK=y
+ CONFIG_CC_HAVE_STACKPROTECTOR_SYSREG=y
+@@ -54,6 +64,7 @@ CONFIG_CRYPTO_SHA1_ARM64_CE=y
+ CONFIG_DMA_BOUNCE_UNALIGNED_KMALLOC=y
+ CONFIG_DMA_DIRECT_REMAP=y
+ CONFIG_DMA_NEED_SYNC=y
++CONFIG_DWMAC_SUN55I=y
+ CONFIG_DWMAC_SUN8I=y
+ CONFIG_EXCLUSIVE_SYSTEM_RAM=y
+ CONFIG_FRAME_POINTER=y
+@@ -68,10 +79,27 @@ CONFIG_GENERIC_MSI_IRQ=y
+ CONFIG_HAS_IOPORT=y
+ CONFIG_HOTPLUG_CORE_SYNC=y
+ CONFIG_HOTPLUG_CORE_SYNC_DEAD=y
++# CONFIG_HOTPLUG_PCI_PCIE is not set
+ CONFIG_ILLEGAL_POINTER_VALUE=0xdead000000000000
++# CONFIG_IOMMUFD is not set
++CONFIG_IOMMU_API=y
++# CONFIG_IOMMU_DEBUGFS is not set
++# CONFIG_IOMMU_DEFAULT_DMA_LAZY is not set
++# CONFIG_IOMMU_DEFAULT_DMA_STRICT is not set
++CONFIG_IOMMU_DEFAULT_PASSTHROUGH=y
++CONFIG_IOMMU_DMA=y
++CONFIG_IOMMU_IOVA=y
++CONFIG_IOMMU_IO_PGTABLE=y
++# CONFIG_IOMMU_IO_PGTABLE_ARMV7S is not set
++# CONFIG_IOMMU_IO_PGTABLE_DART is not set
++CONFIG_IOMMU_IO_PGTABLE_LPAE=y
++# CONFIG_IOMMU_IO_PGTABLE_LPAE_SELFTEST is not set
++CONFIG_IOMMU_SUPPORT=y
++CONFIG_IRQ_MSI_IOMMU=y
+ CONFIG_IRQ_MSI_LIB=y
+ CONFIG_LEGACY_DIRECT_IO=y
+ CONFIG_LRU_GEN_WALKS_MMU=y
++CONFIG_MAXIO_PHY=y
+ CONFIG_MDIO_BUS_MUX=y
+ CONFIG_MICREL_PHY=y
+ CONFIG_MMU_LAZY_TLB_REFCOUNT=y
+@@ -81,9 +109,26 @@ CONFIG_MUSB_PIO_ONLY=y
+ CONFIG_NEED_SG_DMA_LENGTH=y
+ CONFIG_NOP_USB_XCEIV=y
+ CONFIG_NO_IOPORT_MAP=y
++CONFIG_OF_IOMMU=y
+ CONFIG_PAGE_SIZE_LESS_THAN_256KB=y
+ CONFIG_PAGE_SIZE_LESS_THAN_64KB=y
+ CONFIG_PARTITION_PERCPU=y
++CONFIG_PCI=y
++CONFIG_PCIEAER=y
++CONFIG_PCIEASPM=y
++CONFIG_PCIEASPM_DEFAULT=y
++# CONFIG_PCIEASPM_PERFORMANCE is not set
++# CONFIG_PCIEASPM_POWERSAVE is not set
++# CONFIG_PCIEASPM_POWER_SUPERSAVE is not set
++CONFIG_PCIEPORTBUS=y
++# CONFIG_PCIE_DW_DEBUGFS is not set
++CONFIG_PCIE_DW_PLAT_HOST=y
++# CONFIG_PCIE_SUN55I_NONE is not set
++CONFIG_PCIE_SUN55I_RC=y
++CONFIG_PCI_DOMAINS=y
++CONFIG_PCI_DOMAINS_GENERIC=y
++CONFIG_PCI_HOST_GENERIC=y
++CONFIG_PCI_MSI=y
+ CONFIG_PER_VMA_LOCK=y
+ CONFIG_PHY_SUN50I_USB3=y
+ CONFIG_PINCTRL_SUN50I_A100=y
+@@ -95,6 +140,8 @@ CONFIG_PINCTRL_SUN50I_H6=y
+ CONFIG_PINCTRL_SUN50I_H616=y
+ CONFIG_PINCTRL_SUN50I_H616_R=y
+ CONFIG_PINCTRL_SUN50I_H6_R=y
++CONFIG_PINCTRL_SUN55I_A523=y
++CONFIG_PINCTRL_SUN55I_A523_R=y
+ CONFIG_PINCTRL_SUN8I_H3_R=y
+ CONFIG_POSIX_CPU_TIMERS_TASK_WORK=y
+ CONFIG_QUEUED_RWLOCKS=y
+@@ -121,9 +168,12 @@ CONFIG_SUN50I_ERRATUM_UNKNOWN1=y
+ CONFIG_SUN50I_H616_CCU=y
+ CONFIG_SUN50I_H6_CCU=y
+ CONFIG_SUN50I_H6_R_CCU=y
+-# CONFIG_SUN55I_A523_CCU is not set
+-# CONFIG_SUN55I_A523_MCU_CCU is not set
+-# CONFIG_SUN55I_A523_R_CCU is not set
++CONFIG_SUN50I_IOMMU=y
++CONFIG_SUN55I_A523_CCU=y
++CONFIG_SUN55I_A523_MCU_CCU=y
++CONFIG_SUN55I_A523_R_CCU=y
++CONFIG_SUN55I_IOMMU=y
++CONFIG_SUN55I_PCK600=y
+ CONFIG_SUN6I_RTC_CCU=y
+ CONFIG_SUN6I_R_INTC=y
+ CONFIG_SUNXI_NMI_INTC=y
+@@ -132,11 +182,18 @@ CONFIG_SYSCTL_EXCEPTION_TRACE=y
+ CONFIG_THREAD_INFO_IN_TASK=y
+ CONFIG_TOOLS_SUPPORT_RELR=y
+ CONFIG_TRACE_IRQFLAGS_NMI_SUPPORT=y
++# CONFIG_UACCE is not set
+ CONFIG_UNMAP_KERNEL_AT_EL0=y
++CONFIG_USB_DWC3=y
++CONFIG_USB_DWC3_DUAL_ROLE=y
++# CONFIG_USB_DWC3_HOST is not set
++# CONFIG_USB_DWC3_GADGET is not set
+ CONFIG_USB_MUSB_DUAL_ROLE=y
+ CONFIG_USB_MUSB_HDRC=y
+ CONFIG_USB_MUSB_SUNXI=y
+ CONFIG_USB_PHY=y
++CONFIG_USB_XHCI_HCD=y
++CONFIG_USB_XHCI_PLATFORM=y
+ CONFIG_USER_STACKTRACE_SUPPORT=y
+ CONFIG_VDSO_GETRANDOM=y
+ CONFIG_VMAP_STACK=y
+diff --git a/target/linux/sunxi/cortexa53/target.mk b/target/linux/sunxi/cortexa53/target.mk
+index 02b3170..d014136 100644
+--- a/target/linux/sunxi/cortexa53/target.mk
++++ b/target/linux/sunxi/cortexa53/target.mk
+@@ -5,7 +5,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ ARCH:=aarch64
+-BOARDNAME:=Allwinner A64/H5/H6/H616
++BOARDNAME:=Allwinner A64/H5/H6/H616/H618/A523/A527
+ CPU_TYPE:=cortex-a53
+ KERNELNAME:=Image dtbs
+-FEATURES+=fpu
+\ No newline at end of file
++FEATURES+=fpu pci pcie
+diff --git a/target/linux/sunxi/image/cortexa53.mk b/target/linux/sunxi/image/cortexa53.mk
+index 50b286a..bdd1209 100644
+--- a/target/linux/sunxi/image/cortexa53.mk
++++ b/target/linux/sunxi/image/cortexa53.mk
+@@ -36,6 +36,11 @@ define Device/sun50i-h618
+   $(Device/sun50i)
+ endef
+ 
++define Device/sun55i-a527
++  SOC := sun55i-a527
++  $(Device/sun50i)
++endef
++
+ define Device/friendlyarm_nanopi-neo-plus2
+   DEVICE_VENDOR := FriendlyARM
+   DEVICE_MODEL := NanoPi NEO Plus2
+@@ -105,6 +110,15 @@ define Device/pine64_sopine-baseboard
+ endef
+ TARGET_DEVICES += pine64_sopine-baseboard
+ 
++define Device/radxa_cubie-a5e
++  DEVICE_VENDOR := Radxa
++  DEVICE_MODEL := Cubie A5E
++  DEVICE_PACKAGES := kmod-aic8800-sdio aic8800-sdio-firmware kmod-nvme \
++	-wpad-basic-mbedtls wpad-mbedtls
++  $(Device/sun55i-a527)
++endef
++TARGET_DEVICES += radxa_cubie-a5e
++
+ define Device/xunlong_orangepi-one-plus
+   $(Device/sun50i-h6)
+   DEVICE_VENDOR := Xunlong

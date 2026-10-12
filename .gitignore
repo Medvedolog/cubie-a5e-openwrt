@@ -1,0 +1,7 @@
+/openwrt/
+/logs/
+__pycache__/
+*.tar.zst
+*.img
+*.img.gz
+private-key.pem

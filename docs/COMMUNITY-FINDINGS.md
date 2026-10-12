@@ -1,0 +1,153 @@
+# Community findings: Cubie A5E with OpenWrt and mainline kernels
+
+What owners of the board have reported in public threads (mainly the 4PDA
+topic "Radxa Cubie A5E", July 2025 – September 2026) and in public
+repositories and issues. These are **reports by others**, collected as
+input for this project; this project has not reproduced them unless a
+line says so.
+
+Sources: [4PDA: Radxa Cubie A5E](https://4pda.to/forum/index.php?showtopic=1108997),
+[ImmortalWrt issue #2379 "Cubie A5E not bootable"](https://github.com/immortalwrt/immortalwrt/issues/2379),
+[Armbian build](https://github.com/armbian/build).
+
+## 1. Boot: DRAM parameters depend on the board revision
+
+The most important finding for "the image boots".
+
+- Mainline U-Boot's `radxa-cubie-a5e_defconfig` has one fixed set of DRAM
+  PHY timings (`CONFIG_DRAM_SUNXI_TPR6/10/11/12 =
+  0x38000000 / 0x802f3333 / 0xc7c5c4c2 / 0x3533302f`, unchanged in U-Boot
+  master as of 2026-10-12). Boards with other DRAM chips do not boot
+  images built with it (ImmortalWrt snapshots, OpenWrt builds):
+  - 1 GB: `DRAM test failure at address 0x6fffffc0` /
+    `### ERROR ### Please RESET the board ###`;
+  - 4 GB (box label v1.204, Nanya): `DRAM: 4096 MiB`, then an endless line
+    of `T` on the UART;
+  - one 2 GB report: hangs after `DRAM: 2048 MiB` with other parameters.
+- Owners read the values the vendor U-Boot trained on their board (UART,
+  command `sunxi_dram_para`, fields `dram_tpr6/10/11/12`) and rebuilt
+  U-Boot with them; the board then booted. Reported readings:
+
+  | Board / DRAM | tpr6 | tpr10 | tpr11 | tpr12 |
+  |---|---|---|---|---|
+  | mainline defconfig | 0x38000000 | 0x802f3333 | 0xc7c5c4c2 | 0x3533302f |
+  | 4 GB Nanya | 0x3a000000 | 0x882f3333 | 0xdcd9d5d5 | 0x3a373433 |
+  | 4 GB Micron, board 1 (3 readings) | 0x3a000000 | 0x882f3333 | 0xd2d1cfce / 0xd3d1d0cf / 0xd3d1cfce | 0x32322a2c / 0x33322b2c / 0x32322a2c |
+  | 4 GB Micron, board 2 | 0x3a000000 | 0x882f3333 | 0xd4d1cdcf | 0x34322c2d |
+  | 4 GB Micron, board 3 | 0x3a000000 | 0x882f3333 | 0xd2ced0cf | 0x33312d2d |
+  | Armbian alternative set | 0x3a000000 | 0x882f3333 | 0xe6e6e2e3 | 0x38383031 |
+
+  tpr6/tpr10 are the same on all newer boards; tpr11/tpr12 are trained
+  per board and drift slightly between boots.
+- Armbian's U-Boot patch
+  [`sunxi-dram-a523-alternative-parameters.patch`](https://github.com/armbian/build/tree/main/patch/u-boot/v2026.07-sunxi64/board_radxa-cubie-a5e)
+  (Guation, 2026-09-14; Armbian PR #10694) keeps the default set and, when
+  the built-in memory check fails, retrains the DRAM with an alternative
+  set (the last row) and checks again. Reported on the ImmortalWrt issue to
+  boot 1 GB boards. **This project carries it** as
+  `package/boot/uboot-sunxi/patches/420-*` (it applies to U-Boot 2026.04;
+  `mctl_calc_size()` there already returns 0 when the check fails).
+  Limit: it helps only when the check fails; a board that passes the check
+  with the default set and then hangs (the 4 GB "TTTT" case) still needs
+  its own values.
+- Related: Armbian enables CLDO3 (SD card power) explicitly in U-Boot
+  SPL on the AXP717 (`sunxi-board-cldo3-fix.patch`) and runs the DRAM at
+  936 MHz in its defconfig.
+- Board revisions mentioned: V1.1, V1.2 (box labels v1.202, v1.204;
+  model RS500-D4E0J0R38S16). The 1 GB boards are reported to boot only
+  vendor (PhoenixCard/IMAGEWTY) images so far.
+
+**What we need from testers:** board revision, RAM size and chip maker
+(photo of the chip), and the full UART log from power-on (`GND/TX/RX` on
+pins 6/8/10 of the 40-pin header, 115200 8N1). With the vendor image also
+`sunxi_dram_para` from the vendor U-Boot prompt.
+
+## 2. Wi-Fi (AIC8800D80, SDIO)
+
+- ImmortalWrt snapshot r40185 (kernel 6.18.34, June 2026): AP on 5 GHz
+  worked, but with WPA2 clients could not connect, only an open network;
+  occasional drops. Reports of ~105–110 Mbit/s on 5 GHz on mainline-based
+  images vs. 290 Mbit/s (WPA2-PSK, one IPEX antenna) on a vendor
+  kernel 6.6 ImmortalWrt image.
+- An OpenWrt 25.12.5 build with ImmortalWrt's `aic8800` package
+  (`aic8800-sdio-firmware` and `kmod-aic8800-sdio` 2026.03.10.89f865b8-r4)
+  and a Wi-Fi node in the DTB: 5 GHz AP with and without a password
+  reported working (September 2026). That build installs the official
+  25.12 repositories although its kernel is not the official one (this
+  project's checker, run on one of those images: Wi-Fi node disabled in
+  an earlier image, no aic8800 module, official `distfeeds`).
+- **Cold start:** on several boards the interface does not come up while
+  the board is below about 40 °C (OpenWrt, ImmortalWrt and Armbian alike);
+  the vendor Debian 11 (RadxaOS) and an RSDK Debian 13 build do not show
+  it. The failing log (Armbian, firmware path `aic8800_fw/SDIO/aic8800D80`):
+
+  ```
+  aicbsp: aicbsp_get_feature, set FEATURE_SDIO_CLOCK 150 MHz
+  rwnx_load_firmware :firmware path = .../fw_patch_8800d80_u02.bin
+  sunxi-mmc 4021000.mmc: data error, sending stop command
+  aicbsp: sdio_err:<aicwf_sdio_tx_msg,1055>: aicwf_sdio_send_pkt fail-110
+  aicbsp: sdio_err:<aicwf_sdio_bus_txmsg,1205>: send faild:0, 0,4e2
+  cmd timed-out
+  bin upload fail: 1e1000, err:-110
+  aicbt_patch_trap_data_load fail
+  ```
+
+  Lowering the SDIO clock to 5 MHz made the interface appear but capped
+  throughput near 20 Mbit/s. Armbian and ImmortalWrt limit mmc1 to
+  35 MHz in the device tree. Candidate causes from other A527 work: the
+  vendor driver's SDIO IO-pad delay writes for non-DDR50 timings, a
+  missing SDIO wakeup before the first transfer (see
+  [PORTING-NOTES](PORTING-NOTES.md#wi-fi-driver-packagekernelaic8800)).
+  To be checked in this project's driver audit.
+- Install order reported for package-based setups: firmware first, then
+  the kmod, then reboot; `wpad-basic-mbedtls` (or a full wpad) is needed
+  for WPA2.
+
+## 3. Ethernet
+
+- Early OpenWrt builds for the A5E had only one working port (the second
+  GMAC200 port was fixed later in the same series of builds).
+- Users plugging into "the other port" got connectivity: which physical
+  jack is `eth0` must be stated in the docs once verified.
+
+## 4. USB 3.0 and NVMe
+
+- The M.2 slot and the USB 3.0 port share one PHY (see
+  [PORTING-NOTES §4](PORTING-NOTES.md#4-usb-what-works-and-what-does-not)).
+- NVMe as the root disk needs a bootloader in the onboard SPI NOR flash;
+  from microSD it is data storage only.
+- An OpenWrt 25.12.5 build with a mainline-style USB3 backport (DWC3 at
+  `usb@4d00000` with `phys = <&usbphy 2>, <&combophy>`, compatible
+  `allwinner,sun55i-a523-usb3-pcie-phy`, no PCIe) reported "USB works".
+
+## 5. Packages and repositories
+
+- Images built from source but shipping the official `distfeeds` fail on
+  `apk add luci` (`unable to select packages`) or install kmods built for
+  another kernel. This project's images point to their own repository for
+  everything tied to the kernel.
+
+## 6. Writing images to the card
+
+- OpenWrt/ImmortalWrt sunxi images are RAW (msdos partition table): write
+  with `dd`, USBImager, balenaEtcher or Win32 Disk Imager (balenaEtcher
+  takes the `.gz` directly).
+- Vendor images in IMAGEWTY format (file starts with `IMAGEWTY`) need
+  PhoenixCard (Windows). A RAW image starts with zeros and has `55AA` at
+  0x1FE.
+
+## 7. Other A523/A527/T527 work worth following
+
+| Link | What |
+|---|---|
+| [armbian/build](https://github.com/armbian/build) (`config/boards/radxa-cubie-a5e.csc`, `patch/kernel/archive/sunxi-6.18`, `patch/u-boot/v2026.07-sunxi64`) | Cubie A5E kernels 6.18/7.2, U-Boot 2026.07 with PCIe/USB3 PHY and DRAM fallback |
+| [ImmortalWrt firmware selector, radxa_cubie-a5e](https://firmware-selector.immortalwrt.org/?version=SNAPSHOT&target=sunxi%2Fcortexa53&id=radxa_cubie-a5e) | snapshot images (DRAM issue above applies) |
+| [iuncuim/openwrt `openwrt-25.12.0-a523-1`](https://github.com/iuncuim/openwrt/tree/openwrt-25.12.0-a523-1) | OpenWrt 25.12 with the A523 backports of the mainline A523 developer |
+| [ut-slayer/orangepi-4a-mainline](https://github.com/ut-slayer/orangepi-4a-mainline) | T527 Orange Pi 4A on Linux 6.18: PCIe/NVMe on the same combo PHY driver validated with real drives, `RESET_GPIO` vs `mmc-pwrseq-simple`, watchdog reboot and AXP717 power-off fixes for vendor BL31 |
+| [tcmichals/cubie-a5e](https://github.com/tcmichals/cubie-a5e) | Cubie A5E on mainline: AIC8800D80 fixes (BT patch table overflow, SDIO pad delays, wakeup), Wi-Fi power sequence |
+| [jernejsk phoenix2img.py](https://gist.github.com/jernejsk/7290b340ecc636bafd52f80fa3ed9fff) | converts IMAGEWTY images to RAW |
+| [radxa-build/radxa-cubie-a5e releases](https://github.com/radxa-build/radxa-cubie-a5e/releases), [RSDK](https://radxaos-sdk.github.io/rsdk/intro.html) | vendor Debian images and their build kit (no Wi-Fi cold-start issue reported there) |
+| [Radxa docs: Cubie A5E](https://docs.radxa.com/en/cubie/a5e), [hardware use](https://docs.radxa.com/en/cubie/a5e/hardware-use) | vendor documentation |
+| [nskhuman.ru: Radxa hardware overview](http://nskhuman.ru/allwinner/radxa/hardware.php) | board V1.1 hardware notes (Russian) |
+| [Manjaro ARM A523 thread](https://forum.manjaro.org/t/allwinner-h728-a523-a527-t527-initial-support-thread/173654) | mainline A523 development status |
+| [Radxa forum: unofficial OpenWrt for A5E](https://forum.radxa.com/t/unofficial-openwrt-other-firmware-for-a5e/26060), [OpenWrt forum request](https://forum.openwrt.org/t/request-for-official-openwrt-support-for-cubie-a5e/246587) | other OpenWrt efforts and the upstream request |

@@ -1,0 +1,47 @@
+From: cubie-a5e-openwrt <noreply@github.com>
+Subject: arm64: dts: allwinner: a527-cubie-a5e: Wi-Fi power sequence
+
+ImmortalWrt's 131-01 adds the mmc1 node and the PL7 3.3 V switch for the
+AIC8800D80 module. Two more bits come from the Radxa BSP device tree
+(radxa/allwinner-device, configs/cubie_a5e/linux-5.15/board.dts):
+
+ - WL_REG_ON is PM1 ("wlan_regon = <&r_pio PM 1 GPIO_ACTIVE_HIGH>"):
+   drive it with mmc-pwrseq-simple instead of relying on its state after
+   U-Boot. Armbian (patch 22-Enable-wifi-on-Radxa-Cubie-A5E) does the same.
+ - the module's I/O runs from BLDO1 (1.8 V, "vcc-pg-iowifi"; the BSP uses
+   it as vqmmc of sdc1): name it as vqmmc so it is never switched off
+   while mmc1 is in use.
+
+Not yet verified on hardware.
+
+---
+diff --git a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+index ee7b254..8245bf2 100644
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -61,6 +61,16 @@
+ 		enable-active-high;
+ 	};
+ 
++	/*
++	 * WL_REG_ON of the AIC8800D80 module is PM1 (wlan_regon in the
++	 * Radxa BSP device tree); toggled once on power-up.
++	 */
++	wifi_pwrseq: wifi-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		reset-gpios = <&r_pio 1 1 GPIO_ACTIVE_LOW>; /* PM1 */
++		post-power-on-delay-ms = <200>;
++	};
++
+ 	reg_vcc5v: vcc5v {
+ 		/* board wide 5V supply from the USB-C connector */
+ 		compatible = "regulator-fixed";
+@@ -224,6 +234,8 @@
+ 
+ &mmc1 {
+ 	vmmc-supply = <&reg_3v3_wifi>;
++	vqmmc-supply = <&reg_bldo1>;
++	mmc-pwrseq = <&wifi_pwrseq>;
+ 	bus-width = <4>;
+ 	non-removable;
+ 	// todo: investigate why clock above 40MHz makes data errors
