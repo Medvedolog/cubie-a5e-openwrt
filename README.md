@@ -31,7 +31,7 @@ repository (planned, see below).
 
 | Function | Status |
 |---|---|
-| Image builds in CI | in progress |
+| Image builds in CI | yes (build checks pass; not tested on hardware) |
 | Boots from microSD | not tested |
 | eth0 (LAN, 192.168.1.1) / eth1 (WAN, DHCP) | not tested |
 | Wi-Fi AP / client, 2.4 GHz | not tested |
@@ -86,7 +86,7 @@ throw-away key is used and nothing is published.
 
 Full plan with tasks and status: [docs/ROADMAP.md](docs/ROADMAP.md).
 
-1. First image that builds — in progress.
+1. First image that builds — done (test pre-release `cubie-a5e-test`).
 2. First boot on hardware: both Ethernet ports, USB, NVMe, reboot,
    sysupgrade.
 3. Wi-Fi: AP and client, 2.4 and 5 GHz, WPA2/WPA3, cold start.
