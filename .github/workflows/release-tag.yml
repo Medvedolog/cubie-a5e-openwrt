@@ -1,0 +1,64 @@
+name: Release a tested build
+
+# Pushing a tag like cubie-a5e-beta1 (or running this workflow by hand with
+# the tag name) turns the current test or rolling build into a fixed
+# release. Nothing is rebuilt: the files are the ones that were tested.
+# The notes are docs/releases/<tag>.md (bilingual, with the comparison to
+# the previous release and how to update) followed by the generated table
+# of DRAM-profile images.
+
+on:
+  push:
+    tags:
+      - 'cubie-a5e-*-beta*'
+      - 'cubie-a5e-*-rc*'
+      - 'cubie-a5e-*-r[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create, e.g. cubie-a5e-25.12-beta1
+        required: true
+      from:
+        description: Release to take the files from
+        type: choice
+        options: [cubie-a5e-test, cubie-a5e-snapshot-latest]
+        default: cubie-a5e-test
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      R: ${{ github.repository }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+      FROM: ${{ inputs.from || 'cubie-a5e-snapshot-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the source build matches the tag
+        run: |
+          test -f "docs/releases/$TAG.md" || { echo "missing docs/releases/$TAG.md"; exit 1; }
+          BUILT=$(gh release view "$FROM" -R "$R" --json targetCommitish -q .targetCommitish)
+          echo "$FROM built from $BUILT, tag at $(git rev-parse HEAD)"
+          INPUTS="target package patches config scripts .github/workflows/build.yml"
+          git diff --stat "$BUILT" HEAD -- $INPUTS
+          git diff --quiet "$BUILT" HEAD -- $INPUTS || {
+            echo "build inputs changed since $FROM was built; let that build finish first"; exit 1; }
+
+      - name: Create the release
+        run: |
+          mkdir art
+          gh release download "$FROM" -R "$R" -D art
+          ls -la art
+          { cat "docs/releases/$TAG.md"; echo
+            python3 scripts/release-notes.py --images art --dram-dir config/dram --kind tag \
+              --base-url "https://github.com/$R/releases/download/$TAG/"
+          } > notes.md
+          if [ "$GITHUB_EVENT_NAME" = push ]; then T=--verify-tag; else T="--target $GITHUB_SHA"; fi
+          gh release create "$TAG" $T --prerelease -R "$R" \
+            --title "Radxa Cubie A5E OpenWrt ${TAG#cubie-a5e-}" --notes-file notes.md art/*

@@ -1,0 +1,109 @@
+name: Publish build
+
+# Runs after every successful "Build image" run, so publishing never needs a
+# rebuild:
+#   main           -> pre-release cubie-a5e-snapshot-latest (rolling)
+#   other branches -> pre-release cubie-a5e-test (test build, replaced on
+#                     every run)
+# The notes list the DRAM-profile images and which one to flash
+# (scripts/release-notes.py, config/dram/*.conf), plus
+# docs/releases/test-build.md for test builds. Fixed releases: release-tag.yml.
+#
+# By hand (Actions -> Publish build -> Run workflow): give the id of a
+# successful build run.
+
+on:
+  workflow_run:
+    workflows: ["Build image (OpenWrt from source)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Id of the build run to publish
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      R: ${{ github.repository }}
+    steps:
+      # scripts and profile descriptions from the current default branch
+      - uses: actions/checkout@v4
+
+      - name: Which build
+        id: run
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            ID=${{ inputs.run_id }}
+          else
+            ID=${{ github.event.workflow_run.id }}
+          fi
+          read -r BRANCH SHA CONCL < <(gh api "repos/$R/actions/runs/$ID" \
+            -q '[.head_branch, .head_sha, .conclusion] | @tsv')
+          test "$CONCL" = success || { echo "run $ID: $CONCL"; exit 1; }
+          if [ "$BRANCH" = main ]; then
+            TAG=cubie-a5e-snapshot-latest; KIND=latest
+            TITLE="Cubie A5E OpenWrt snapshot ${SHA::7} (rolling)"
+          else
+            TAG=cubie-a5e-test; KIND=test
+            TITLE="Test build ${SHA::7} ($BRANCH)"
+          fi
+          {
+            echo "id=$ID"; echo "branch=$BRANCH"; echo "sha=$SHA"
+            echo "tag=$TAG"; echo "kind=$KIND"; echo "title=$TITLE"
+          } >> "$GITHUB_OUTPUT"
+          echo "run $ID ($BRANCH ${SHA::7}) -> $TAG"
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ github.token }}
+          path: art
+
+      - name: Assets and notes
+        run: |
+          ls -R art | head -50
+          mkdir up
+          cp art/cubie-a5e-image/images/*.img.gz art/cubie-a5e-image/images/sha256sums up/
+          cp art/cubie-a5e-image/images/*.manifest up/ 2>/dev/null || true
+          cp art/cubie-a5e-image/images/u-boot-dram-*.txt up/
+          # the Wi-Fi driver and firmware, for "apk add" over the network
+          find art/cubie-a5e-packages \( -name 'kmod-aic8800*.apk' -o -name 'aic8800-*firmware*.apk' \) \
+            -exec cp {} up/ \;
+          ls -la up
+          dup=$(ls up | sort | uniq -d)
+          [ -z "$dup" ] || { echo "duplicate asset names: $dup"; exit 1; }
+          BASE="https://github.com/$R/releases/download/${{ steps.run.outputs.tag }}/"
+          python3 scripts/release-notes.py --images up --dram-dir config/dram \
+            --kind "${{ steps.run.outputs.kind }}" \
+            --build-info art/cubie-a5e-image/build-info.txt --base-url "$BASE" > notes.md
+          if [ "${{ steps.run.outputs.kind }}" = test ] && [ -f docs/releases/test-build.md ]; then
+            printf '\n' >> notes.md
+            cat docs/releases/test-build.md >> notes.md
+          fi
+          cat notes.md
+
+      - name: Release
+        run: |
+          TAG=${{ steps.run.outputs.tag }}
+          SHA=${{ steps.run.outputs.sha }}
+          # the tag moves to the built commit; the release is replaced whole
+          gh release delete "$TAG" -R "$R" -y --cleanup-tag 2>/dev/null || true
+          for i in 1 2 3; do
+            gh release create "$TAG" -R "$R" --prerelease --target "$SHA" \
+              --title "${{ steps.run.outputs.title }}" --notes-file notes.md up/* && break
+            [ "$i" = 3 ] && exit 1
+            echo "release create failed, retrying in 20 s"; sleep 20
+          done
+          gh release view "$TAG" -R "$R" --json url,assets -q '.url, .assets[].name'

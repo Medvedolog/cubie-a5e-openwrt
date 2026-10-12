@@ -54,9 +54,15 @@ is planned ([PORTING-NOTES §4](docs/PORTING-NOTES.md#4-usb-what-works-and-what-
 
 ## Download
 
-Not yet: images are CI artifacts of
-[Build image](../../actions/workflows/build.yml) runs until the first one
-boots on a board.
+- Test builds: pre-release
+  [cubie-a5e-test](../../releases/tag/cubie-a5e-test), replaced by every
+  build of a working branch. **Not verified on hardware.**
+- Later: the rolling `cubie-a5e-snapshot-latest` from `main` and fixed
+  releases with notes (`docs/releases/`).
+
+Each build has **one image per DRAM profile** (`…-dram-mainline-…`,
+`…-dram-micron-4g-m6-…`); they differ only in U-Boot's memory timings. The
+release notes say which one to flash.
 
 ## Repository layout
 
