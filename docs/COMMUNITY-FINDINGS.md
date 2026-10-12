@@ -103,6 +103,34 @@ pins 6/8/10 of the 40-pin header, 115200 8N1). With the vendor image also
   the kmod, then reboot; `wpad-basic-mbedtls` (or a full wpad) is needed
   for WPA2.
 
+### What the September 2026 OpenWrt 25.12.5 image contains
+
+Inspected by this project (`openwrt-25.12.5-sunxi-cortexa53-radxa_radxa-a5e-ext4-sdcard.img`,
+r33051-f5dae5ece4, built 2026-09-14, "old revisions" variant):
+
+- U-Boot 2026.01 SPL; the default Cubie A5E DRAM constants (TPR6
+  `0x38000000`, TPR10 `0x802f3333`) are in the SPL, no fallback set.
+- Kernel 6.12.94. Its `kernel` package claims the official 25.12.5 ABI
+  (`6.12.94~54c42a9af64da421c37305c250430d94-r1`) and the image uses the
+  official `kmods/6.12.94-1-54c42a9…` feed, although the kernel carries
+  extra sun55i drivers built in: official kmods install, but their ABI
+  match with this kernel is assumed, not guaranteed.
+- mmc1 (Wi-Fi) exactly like this project's patch 900 plus ImmortalWrt's
+  131-01: `mmc-pwrseq-simple` on PM1 active low, 200 ms; vmmc = PL7
+  3.3 V switch; vqmmc = BLDO1; 35 MHz; mmc1 pins drive strength 40. The
+  author reports a working 5 GHz AP with WPA2 with this device tree and
+  ImmortalWrt's aic8800 r4 packages installed afterwards — an independent
+  sign that this Wi-Fi wiring is right (not verified here).
+- USB3 instead of PCIe: DWC3 `usb@4d00000` (`phys = <&usbphy 2>,
+  <&combophy>`), `phy-sun55i-usb3-pcie`, `dwc3-of-simple` built in; no
+  `pcie` node. Source of these patches: the A523 developer's OpenWrt
+  branch (`iuncuim/openwrt`, `openwrt-25.12.0-a523-1`). Candidate base
+  for this project's USB3 image variant.
+- Both GMACs on (eth0 LAN, eth1 WAN via board.d), no MAXIO PHY driver
+  (generic PHY driver).
+- No Wi-Fi driver, firmware or wpad in the image (installed by hand);
+  `attendedsysupgrade` included.
+
 ## 3. Ethernet
 
 - Early OpenWrt builds for the A5E had only one working port (the second
