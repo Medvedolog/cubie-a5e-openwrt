@@ -1,6 +1,6 @@
 --- a/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/aic_bsp_driver.h
 +++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/aic_bsp_driver.h
-@@ -530,8 +530,8 @@
+@@ -530,7 +530,7 @@
  
  
  #define FEATURE_SDIO_CLOCK          50000000 // 0: default, other: target clock rate
