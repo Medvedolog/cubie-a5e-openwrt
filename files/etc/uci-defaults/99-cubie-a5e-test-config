@@ -82,6 +82,7 @@ uci set wireless.default_radio0.mode='ap'
 uci set wireless.default_radio0.ssid='OpenWrt'
 uci set wireless.default_radio0.encryption='none'
 uci set wireless.default_radio0.disabled='0'
+uci -q delete wireless.default_radio0.disabled
 uci -q delete wireless.default_radio0.key
 
 uci commit wireless || exit 1
