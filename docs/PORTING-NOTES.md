@@ -1,8 +1,10 @@
 # Porting notes: OpenWrt on the Radxa Cubie A5E
 
-What the build takes from where, and why. Everything here is from reading
-sources; **nothing in this file has been verified on hardware yet** unless a
-section says so.
+What the build takes from where, and why. The original research was source-based;
+**on-board tests began on 2026-10-13**. The ext4 microSD image now boots on the
+4 GB Micron board, and AIC8800 SDIO / firmware succeeds on some boots but
+fails with `-110` on others. See [field evidence (RU)](AIC8800-SDIO-WIFI.ru.md),
+[manual recovery](AIC8800-RECOVERY.ru.md), and [test plan](TEST-PLAN.md).
 
 ## 1. Starting point (2026-10-12)
 
@@ -44,7 +46,9 @@ once the board runs.
 
 ### Wi-Fi driver (`package/kernel/aic8800`)
 
-ImmortalWrt's package, unchanged: source
+ImmortalWrt's package and pinned source, with the **test-branch** local
+`090-sdio-respect-mmc-clock.patch` disabling the vendor's forced 150 MHz:
+source
 `https://github.com/radxa-pkg/aic8800.git` at `89f865b80f5f` (2026-03-10),
 `kmod-aic8800-sdio` = `aic8800_bsp.ko` + `aic8800_fdrv.ko`, firmware in
 `/lib/firmware/aic8800/sdio`. Bluetooth (`AIC8800_SDIO_BT_SUPPORT`) is
@@ -70,7 +74,12 @@ Notes for the driver audit (step after the first boot):
   - the chip may start in bus sleep; an explicit SDIO wakeup before the
     first firmware transfer avoided timeouts.
 
-  None of this is in the build yet: first see what the board does.
+  Update 2026-10-13: a real first-boot failure has now been observed during
+  firmware transfer (`sunxi-mmc 4021000.mmc: data error`, `-110`), and
+  a successful boot used 33.33 MHz actual SDIO. See the field report linked
+  above. The vendor 150 MHz override was disabled; deeper wake-up / IO-pad
+  investigations remain hypotheses. A manual reset/reinit tool is now present,
+  but not hardware-validated.
 
 ## 3. Our own changes
 
@@ -187,3 +196,52 @@ kernel. Planned after the PCIe image boots.
 - **DietPi**: no Cubie A5E image (only Orange Pi 4A on T527, Armbian kernel).
 - Reports of board owners (4PDA, ImmortalWrt issues) and other A523/T527
   projects: [COMMUNITY-FINDINGS.md](COMMUNITY-FINDINGS.md).
+
+## 6. Hardware observations and software recovery (2026-10-13)
+
+**Do not infer MMC identity from `mmc0`/`mmc1`.** On the test A5E,
+`4020000.mmc` is the rootfs microSD controller, and `4021000.mmc`
+is the AIC8800D80 SDIO controller. Linux enumeration order varies; both
+`mmc0:390b` and `mmc1:390b` have referred to the **same AIC8800**.
+
+A successful boot: requested MMC clock 35 MHz, actual 33.33 MHz; 4-bit,
+1.8 V signalling, AIC firmware and PHY registered. A failed boot:
+`aicwf_sdio_send_pkt fail-110`, firmware upload timed out (twice).
+Ext4 rootfs remounted writable in both logs; the SD card did not change.
+
+The initial UCI issue was separate: `wifi config` may run before the
+firmware driver registers PHY, and `wireless.radioX.path` includes the
+unstable `mmcN` index. OpenWrt and ImmortalWrt's generic mac80211
+config generators match existing radios by MAC/PHY/path; path-only
+matching can create duplicate sections when the host is renumbered.
+The onboard PHY MAC `fc:23:cd:03:8e:78` did not change across the
+reboots checked, so the test-branch `uci-defaults` binds `radio0`
+to its detected MAC (not a globally fixed hard-coded address) and
+removes auto-generated duplicates. This is a first-boot fix, **not**
+a permanent hotplug solution.
+
+The design of the **next** persistent hotplug handler comes from
+[our OPIZ3 USB Wi-Fi script](https://github.com/Medvedolog/opiz3-wlan-backport/blob/main/package/luci/luci-app-opiz3-status/root/etc/hotplug.d/ieee80211/11-opiz3-usb-macaddr):
+match radio by MAC and update the current `path`, preserving its UCI
+section and user configuration when bus numbers change. No such handler
+has yet been installed for the A5E SDIO device.
+
+Unlike OpenWrt, Armbian does not use UCI `radioX` names. Its Cubie A5E
+DTS has `mmc-pwrseq-simple` on PM1, I/O BLDO1 at 1.8 V and MMC 40 MHz;
+[Armbian regulator patch 34](https://github.com/armbian/build/blob/main/patch/kernel/archive/sunxi-6.18/patches.backports/34-fix-wifi-regulator-cubie-a5e.patch)
+adds `regulator-always-on` to BLDO1. Our DTS uses 35 MHz and declares
+BLDO1 as `vqmmc` but has **not** tested `always-on`. Armbian's SoC
+efuse fallback-MAC fix targets **Sophgo / Milk-V Duo S**, not this A527:
+copying it here would be incorrect.
+
+Our manual `aic8800-recover` adapts
+[the OPIZ3 recovery script](https://github.com/Medvedolog/opiz3-wlan-backport/blob/main/package/kernel/uwe5622/files/uwe5622-recover):
+only after unloading `aic8800_fdrv` and `aic8800_bsp` does it unbind/
+bind `4021000.mmc`, wait for SDIO/PHY, and revive matching UCI radios.
+It limits attempts, refuses to detach a host carrying storage, and is
+**manual-only until tested on the physical A5E**. The UWE5622 SDIO
+unregistration patch 250 is driver-specific, not portable to AIC8800.
+
+- Full Russian investigation: [AIC8800-SDIO-WIFI.ru.md](AIC8800-SDIO-WIFI.ru.md).
+- Operator commands and caveats: [AIC8800-RECOVERY.ru.md](AIC8800-RECOVERY.ru.md).
+- Acceptance criteria: [TEST-PLAN.md](TEST-PLAN.md).
