@@ -1,15 +1,32 @@
 #!/bin/sh
-# Cubie A5E laboratory first-boot defaults. Deliberately open AP.
-# Only run once wireless configuration has been generated; nonzero exit
-# leaves this uci-defaults script available for the next boot.
-uci -q get wireless.radio0 >/dev/null 2>&1 || exit 1
-uci -q get wireless.default_radio0 >/dev/null 2>&1 || exit 1
+# Cubie A5E laboratory defaults. AP is deliberately open for testing.
+# OpenWrt's boot script runs wifi config *before* loading Wi-Fi modules,
+# so on the first successful AIC8800 probe the radio config may not exist
+# when uci-defaults starts. Re-run wifi config now that kmodloader completed.
+# Exit non-zero if radio0 is unavailable: OpenWrt retains this script and
+# retries it on the next boot rather than silently skipping the defaults.
+
 uci -q get network.lan >/dev/null 2>&1 || exit 1
 
-# Use the canonical UCI address/netmask form of 192.168.1.1/24.
+# Canonical UCI address/netmask form of 192.168.1.1/24.
 uci set network.lan.ipaddr='192.168.1.1'
 uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='60'
+uci commit network || exit 1
+
+if ! /sbin/wifi config; then
+    logger -t cubie-a5e-uci 'wifi config failed; will retry on next boot'
+    exit 1
+fi
+
+if ! uci -q get wireless.radio0 >/dev/null 2>&1; then
+    logger -t cubie-a5e-uci 'radio0 not discovered yet; will retry on next boot'
+    exit 1
+fi
+if ! uci -q get wireless.default_radio0 >/dev/null 2>&1; then
+    logger -t cubie-a5e-uci 'default_radio0 not generated yet; will retry on next boot'
+    exit 1
+fi
 
 uci set wireless.radio0.channel='36'
 uci set wireless.radio0.htmode='HE80'
@@ -22,4 +39,6 @@ uci set wireless.default_radio0.ssid='OpenWrt'
 uci set wireless.default_radio0.encryption='none'
 uci -q delete wireless.default_radio0.key
 
-uci commit network && uci commit wireless
+uci commit wireless || exit 1
+logger -t cubie-a5e-uci 'applied first-boot LAN and open 5GHz HE80 AP defaults'
+exit 0
