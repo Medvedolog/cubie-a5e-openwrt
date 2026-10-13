@@ -1,0 +1,90 @@
+#!/bin/sh
+# Cubie A5E lab first boot: configure only the onboard AIC8800 SDIO.
+# The MMC host index (mmc0/mmc1) changes between boots. OpenWrt's
+# default path=.../mmcN:390b:1 is not persistent. Match radio0 by
+# the physical device's MAC instead, so wifi config does not duplicate it.
+# Keep this script when Wi-Fi is not ready; boot's uci-defaults retries.
+
+uci -q get network.lan >/dev/null 2>&1 || exit 1
+uci set network.lan.ipaddr='192.168.1.1'
+uci set network.lan.netmask='255.255.255.0'
+uci set network.lan.ip6assign='60'
+uci commit network || exit 1
+
+# Refresh /etc/board.json and generate default radio sections.
+# This runs after the first kmodloader pass, but the AIC8800 firmware
+# may fail to load on some cold boots.
+if ! /sbin/wifi config; then
+    logger -t cubie-a5e-uci 'wifi config failed, retry next boot'
+    exit 1
+fi
+
+onboard_phy=
+onboard_mac=
+for phy_dir in /sys/class/ieee80211/*; do
+    [ -r "$phy_dir/macaddress" ] || continue
+    devpath=$(readlink -f "$phy_dir/device") || continue
+    case "$devpath" in
+        */4021000.mmc/*)
+            onboard_phy=${phy_dir##*/}
+            onboard_mac=$(cat "$phy_dir/macaddress")
+            break
+            ;;
+    esac
+done
+
+if [ -z "$onboard_phy" ] || [ -z "$onboard_mac" ]; then
+    logger -t cubie-a5e-uci 'AIC8800 PHY missing on 4021000.mmc, retry next boot'
+    exit 1
+fi
+
+# Use a stable device identity across changing MMC enumeration numbers.
+# macaddr identifies the radio in mac80211; it does not change AP BSSID.
+uci set wireless.radio0='wifi-device'
+uci set wireless.radio0.type='mac80211'
+uci -q delete wireless.radio0.path
+uci -q delete wireless.radio0.phy
+uci set wireless.radio0.macaddr="$onboard_mac"
+uci set wireless.radio0.band='5g'
+
+# Remove the auto-generated stale copies of this one onboard radio.
+# Do not touch unrelated radios (e.g. USB Wi-Fi adapters).
+for radio in $(uci -q show wireless |
+        sed -n 's/^wireless\.\(radio[0-9][0-9]*\)=wifi-device$/\1/p'); do
+    [ "$radio" = radio0 ] && continue
+    path=$(uci -q get "wireless.$radio.path")
+    other_mac=$(uci -q get "wireless.$radio.macaddr")
+    case "$path" in
+        *4021000.mmc*)
+            uci -q delete "wireless.default_$radio"
+            uci -q delete "wireless.$radio"
+            logger -t cubie-a5e-uci "removed duplicate $radio of onboard AIC8800"
+            continue ;;
+    esac
+    if [ -n "$other_mac" ] && [ "$other_mac" = "$onboard_mac" ]; then
+        uci -q delete "wireless.default_$radio"
+        uci -q delete "wireless.$radio"
+        logger -t cubie-a5e-uci "removed duplicate $radio with matching MAC"
+    fi
+done
+
+uci set wireless.radio0.channel='36'
+uci set wireless.radio0.htmode='HE80'
+uci set wireless.radio0.country='PA'
+uci set wireless.radio0.cell_density='0'
+uci set wireless.radio0.txpower='20'
+uci set wireless.radio0.disabled='0'
+
+uci set wireless.default_radio0='wifi-iface'
+uci set wireless.default_radio0.device='radio0'
+uci set wireless.default_radio0.network='lan'
+uci set wireless.default_radio0.mode='ap'
+uci set wireless.default_radio0.ssid='OpenWrt'
+uci set wireless.default_radio0.encryption='none'
+uci set wireless.default_radio0.disabled='0'
+uci -q delete wireless.default_radio0.disabled
+uci -q delete wireless.default_radio0.key
+
+uci commit wireless || exit 1
+logger -t cubie-a5e-uci "applied onboard AIC8800 AP on $onboard_phy, MAC $onboard_mac"
+exit 0

@@ -7,8 +7,8 @@ support that is under review, built from source on GitHub Actions, with
 the onboard Wi-Fi (AIC8800D80, SDIO), both Gigabit Ethernet ports, USB and
 M.2 NVMe.
 
-> **Status: first builds. Nothing has been tested on hardware yet.**
-> The table below is updated only from reports with logs from a board.
+> **Status: hardware testing underway (2026-10-13).** On a Cubie A5E V1.1 / 4 GB Micron board the microSD ext4 rootfs boots. The AIC8800D80 sometimes loads firmware and registers a PHY, but another cold boot fails with SDIO `-110`. **Reliable AP operation and recovery have not yet been demonstrated.**
+> Evidence and unresolved issues: [AIC8800 / SDIO field report (Russian)](docs/AIC8800-SDIO-WIFI.ru.md).
 
 ## Why a source build
 
@@ -31,11 +31,11 @@ repository (planned, see below).
 
 | Function | Status |
 |---|---|
-| Image builds in CI | yes (build checks pass; not tested on hardware) |
-| Boots from microSD | not tested |
-| eth0 (LAN, 192.168.1.1) / eth1 (WAN, DHCP) | not tested |
+| Image builds in CI | yes; image checks pass but do not verify hardware behaviour |
+| Boots from microSD | **confirmed:** ext4 rootfs on the 4 GB Micron test board |
+| eth0 (LAN, 192.168.1.1) / eth1 (WAN, DHCP) | configuration present; both Ethernet ports not fully tested |
 | Wi-Fi AP / client, 2.4 GHz | not tested |
-| Wi-Fi AP / client, 5 GHz | not tested |
+| Wi-Fi 5 GHz / AIC8800D80 | **partial:** SDIO and firmware/PHY work on some boots; `-110` on others; AP/client/DHCP not validated |
 | USB 2.0 ports | not tested |
 | USB 3.0 SuperSpeed | not available in this image (see below) |
 | M.2 NVMe | not tested |
@@ -56,7 +56,7 @@ is planned ([PORTING-NOTES §4](docs/PORTING-NOTES.md#4-usb-what-works-and-what-
 
 - Test builds: pre-release
   [cubie-a5e-test](../../releases/tag/cubie-a5e-test), replaced by every
-  build of a working branch. **Not verified on hardware.**
+  build of a working branch. **Experimental images: ext4 booted, but Wi-Fi reliability is unproven.**
 - Later: the rolling `cubie-a5e-snapshot-latest` from `main` and fixed
   releases with notes (`docs/releases/`).
 
@@ -75,12 +75,22 @@ DRAM settings.
 | `config/diffconfig` | build configuration |
 | `scripts/check-image.py` | checks of the built image (DTB in the FIT image, rootfs, kernel config) |
 | `.github/workflows/build.yml` | the build: PR #23296 at a pinned commit, our files, `make`, checks |
-| `docs/` | [roadmap](docs/ROADMAP.md), [porting notes](docs/PORTING-NOTES.md), [community findings](docs/COMMUNITY-FINDINGS.md); test plan and driver audit to follow |
+| `docs/` | [AIC8800/SDIO field report (RU)](docs/AIC8800-SDIO-WIFI.ru.md), [manual recovery (RU)](docs/AIC8800-RECOVERY.ru.md), [hardware test plan](docs/TEST-PLAN.md), [roadmap](docs/ROADMAP.md), [porting notes](docs/PORTING-NOTES.md), [GitHub build guide (RU)](docs/GITHUB-ACTIONS-GUIDE.ru.md) |
 
 The build runs on GitHub's runners or on a self-hosted runner
 (`workflow_dispatch` input `runner`). Packages are signed with the
 `APK_SIGN_KEY` repository secret (EC P-256 private key); without it a
 throw-away key is used and nothing is published.
+
+## Wi-Fi field findings
+
+- Physical microSD host: `4020000.mmc`; onboard Wi-Fi host: `4021000.mmc`. The enumerated `mmc0/mmc1` names can swap between boots.
+- Successful AIC8800 SDIO I/O was measured at **33.33 MHz actual** (35 MHz requested). The vendor override to 150 MHz has been disabled.
+- The onboard MAC `fc:23:cd:03:8e:78` was stable across the reboots examined. A test-branch UCI fix uses the MAC to prevent duplicate `radioX` sections caused by renumbered MMC paths.
+- A **manual-only** `aic8800-recover --check/--run` has been added, inspired by OPIZ3. It targets only `4021000.mmc` but is **not yet tested on the board**. Run recovery only over UART or wired Ethernet.
+- Firmware upload timeout `-110` is still under investigation. Planned isolated A/B tests: 25 MHz SDIO, BLDO1 supply, MMC power sequence and manual recovery.
+
+See the [full field report](docs/AIC8800-SDIO-WIFI.ru.md), [recovery instructions](docs/AIC8800-RECOVERY.ru.md), and [test plan](docs/TEST-PLAN.md).
 
 ## Plan
 

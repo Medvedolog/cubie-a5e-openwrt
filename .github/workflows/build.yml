@@ -25,6 +25,7 @@ on:
       - 'package/**'
       - 'patches/**'
       - 'config/**'
+      - 'files/**'
       - 'scripts/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
@@ -128,10 +129,15 @@ jobs:
         working-directory: openwrt
         run: |
           # added files only: nothing of ours may replace an OpenWrt file
-          clash=$(cd .. && find target package -type f | while read -r f; do
+          clash=$(cd .. && find target package files -type f | while read -r f; do
             if [ -e "openwrt/$f" ]; then echo "$f"; fi; done)
           if [ -n "$clash" ]; then echo "would overwrite: $clash"; exit 1; fi
-          cp -a ../target ../package .
+          cp -a ../target ../package ../files .
+          # Validate both POSIX/ash scripts before embedding them in the firmware.
+          sh -n files/lib/aic8800.sh
+          sh -n files/usr/sbin/aic8800-recover
+          # GitHub Contents API stores new scripts as 0644; set executable bit in image.
+          chmod 0755 files/usr/sbin/aic8800-recover
           for p in ../patches/openwrt/*.patch; do
             echo "applying ${p##*/}"
             git apply --whitespace=nowarn "$p"
@@ -152,6 +158,10 @@ jobs:
           fi
           cp ../config/diffconfig .config
           make defconfig
+          grep -qx '# CONFIG_TARGET_ROOTFS_INITRAMFS is not set' .config || {
+            echo 'ERROR: initramfs must be disabled in normal SD images'
+            exit 1
+          }
           ./scripts/diffconfig.sh > ../diffconfig.effective
           # what has to survive defconfig
           for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE CONFIG_CCACHE \
@@ -215,43 +225,47 @@ jobs:
           path: openwrt/.ccache
           key: ccache-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ github.run_id }}
 
-      # The image above is the "universal" one: mainline DRAM timings at
-      # 936 MHz (patch 421) with the fallback set of patch 420, as Armbian.
-      # DRAM timings depend on the memory chips of the board
-      # (docs/COMMUNITY-FINDINGS.md §1): for each profile in config/dram,
-      # only U-Boot is rebuilt and the image is assembled again.
+      # The base build already generated valid universal SD images.
+      # DRAM profiles must change ONLY the SPL/U-Boot region, not the FIT
+      # kernel, rootfs, or config. Re-running target/linux/install after
+      # rebuilding U-Boot can replace the FIT with an initramfs kernel.
       - name: Images per DRAM profile
         working-directory: openwrt
         run: |
-          set -o pipefail
+          set -euo pipefail
           OUT=bin/targets/$TARGET/$SUBTARGET
           IMG=../images
           mkdir -p "$IMG"
           PATCH=package/boot/uboot-sunxi/patches/430-dram-profile.patch
+          ubootdir() {
+            find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 0 -type d -print -quit
+          }
           ubootcfg() {
-            find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 2 -name .config | head -1
+            find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 2 -name .config -print -quit
           }
-          save() {
-            local name=$1 f b cfg
+          ubootbin() {
+            find build_dir/target-*/u-boot-radxa-cubie-a5e -maxdepth 2 -name u-boot-sunxi-with-spl.bin -type f -print -quit
+          }
+          save_config() {
+            local name=$1 cfg
             cfg=$(ubootcfg)
-            test -n "$cfg"
+            test -s "$cfg"
             grep -E '^CONFIG_DRAM_(CLK|SUNXI_TPR(6|10|11|12)(_ALT)?)=' "$cfg" | tee "$IMG/u-boot-dram-$name.txt"
-            for f in "$OUT"/*radxa_cubie-a5e*-sdcard.img.gz; do
-              b=$(basename "$f")
-              cp "$f" "$IMG/${b/radxa_cubie-a5e/radxa_cubie-a5e-dram-$name}"
-            done
           }
-          save universal
+          save_config universal
+          for f in "$OUT"/*radxa_cubie-a5e*-sdcard.img.gz; do
+            b=$(basename "$f")
+            cp "$f" "$IMG/${b/radxa_cubie-a5e/radxa_cubie-a5e-dram-universal}"
+          done
+
           for conf in ../config/dram/*.conf; do
             name=$(basename "$conf" .conf)
             echo "::group::DRAM profile $name"
             python3 ../scripts/dram-profile-patch.py "$conf" "$PATCH"
             make package/boot/uboot-sunxi/clean >/dev/null
             make -j"$(nproc)" package/boot/uboot-sunxi/compile > "../logs/uboot-$name.log" 2>&1 ||
-              { tail -50 "../logs/uboot-$name.log"; exit 1; }
-            make -j"$(nproc)" target/linux/install > "../logs/image-$name.log" 2>&1 ||
-              { tail -50 "../logs/image-$name.log"; exit 1; }
-            save "$name"
+              { tail -100 "../logs/uboot-$name.log"; exit 1; }
+            save_config "$name"
             for k in TPR6 TPR10 TPR11 TPR12; do
               want=$(sed -n "s/^$k=//p" "$conf")
               grep -qx "CONFIG_DRAM_SUNXI_$k=$want" "$IMG/u-boot-dram-$name.txt" ||
@@ -260,6 +274,26 @@ jobs:
             want=$(sed -n 's/^CLK=//p' "$conf"); want=${want:-936}
             grep -qx "CONFIG_DRAM_CLK=$want" "$IMG/u-boot-dram-$name.txt" ||
               { echo "U-Boot of $name lacks CONFIG_DRAM_CLK=$want"; exit 1; }
+
+            uboot=$(ubootbin)
+            test -s "$uboot" || { echo 'Missing rebuilt SPL/U-Boot'; exit 1; }
+            uboot_size=$(stat -c%s "$uboot")
+            test "$uboot_size" -le $((1024 * 1024 - 8192)) || {
+              echo "SPL/U-Boot too large for the space before partition 1: $uboot_size bytes"
+              exit 1
+            }
+            for fs in ext4 squashfs; do
+              src=$(find "$IMG" -maxdepth 1 -type f -name "*-dram-universal-$fs-sdcard.img.gz" -print -quit)
+              test -s "$src" || { echo "Missing universal $fs image"; exit 1; }
+              dst=${src/-dram-universal-/-dram-$name-}
+              raw=$(mktemp)
+              gzip -dc "$src" > "$raw"
+              dd if="$uboot" of="$raw" bs=1024 seek=8 conv=notrunc status=none
+              gzip -n -9 -c "$raw" > "$dst"
+              rm -f "$raw"
+              test -s "$dst"
+              echo "Created $dst (only SPL/U-Boot modified)"
+            done
             echo "::endgroup::"
           done
           rm -f "$PATCH"
