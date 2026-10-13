@@ -245,3 +245,24 @@ unregistration patch 250 is driver-specific, not portable to AIC8800.
 - Full Russian investigation: [AIC8800-SDIO-WIFI.ru.md](AIC8800-SDIO-WIFI.ru.md).
 - Operator commands and caveats: [AIC8800-RECOVERY.ru.md](AIC8800-RECOVERY.ru.md).
 - Acceptance criteria: [TEST-PLAN.md](TEST-PLAN.md).
+
+## 7. Patch and package provenance update (2026-10-13)
+
+Testers could not identify the ImmortalWrt upstream from the folder name
+because `package/kernel/aic8800/Makefile` clones `radxa-pkg/aic8800`.
+The **packaging** (Makefile and patches `010`–`080`) originated from
+[ImmortalWrt r5](https://github.com/immortalwrt/immortalwrt/tree/master/package/kernel/aic8800);
+the **driver and firmware** are pinned to
+[Radxa commit `89f865b8`](https://github.com/radxa-pkg/aic8800/commit/89f865b80f5f2ba6c0711c560e1d0191e87a1bf0)
+(2026-03-10). After adding one downstream
+[akorshun SDIO radiotap/FORTIFY patch](https://github.com/akorshun/aic8800-openwrt/blob/master/package/aic8800/patches/090-sdio-rx-fortify-radiotap.patch),
+our **local package revision is r6**, keeping the original ImmortalWrt
+r5 baseline identifiable.
+
+The akorshun patch was called `090-sdio-rx-fortify-radiotap.patch`;
+ours is numbered `100` because `090-sdio-respect-mmc-clock.patch`
+already exists. This is a memory-fortification build compatibility fix
+in SDIO radiotap RX, **not** the firmware upload `-110` resolution.
+The CI-generated `/etc/aic8800-origin` and image `build-info.txt`
+record upstream, commit, release, and applied patch names. Full provenance:
+[`package/kernel/aic8800/README.md`](../package/kernel/aic8800/README.md).

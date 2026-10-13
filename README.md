@@ -92,6 +92,16 @@ throw-away key is used and nothing is published.
 
 See the [full field report](docs/AIC8800-SDIO-WIFI.ru.md), [recovery instructions](docs/AIC8800-RECOVERY.ru.md), and [test plan](docs/TEST-PLAN.md).
 
+## Driver origin and exact version
+
+The package is based on **ImmortalWrt `r5`** packaging, using the
+**Radxa AIC8800 source/firmware at `89f865b8` (2026-03-10)**.
+This branch adds its own `090` SDIO clock patch and the **`100`**
+radiotap/FORTIFY patch imported from akorshun (originally named `090`);
+the **local package release is now `r6`**. Source and patch provenance:
+[`package/kernel/aic8800/README.md`](package/kernel/aic8800/README.md).
+A tester can also inspect `cat /etc/aic8800-origin` on the new image.
+
 ## Plan
 
 Full plan with tasks and status: [docs/ROADMAP.md](docs/ROADMAP.md).

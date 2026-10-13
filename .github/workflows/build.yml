@@ -138,6 +138,19 @@ jobs:
           sh -n files/usr/sbin/aic8800-recover
           # GitHub Contents API stores new scripts as 0644; set executable bit in image.
           chmod 0755 files/usr/sbin/aic8800-recover
+          # Show test users exactly where the driver and OpenWrt package came from.
+          # Derived from the Makefile in this build, not from a stale README.
+          {
+            echo "Driver upstream: https://github.com/radxa-pkg/aic8800"
+            echo "Packaging baseline: ImmortalWrt aic8800 r5"
+            echo "Packaging upstream: https://github.com/immortalwrt/immortalwrt/tree/master/package/kernel/aic8800"
+            echo "Additional SDIO radiotap patch: akorshun/aic8800-openwrt (original 090)"
+            grep -E '^PKG_(NAME|RELEASE|SOURCE_DATE|SOURCE_VERSION):=' package/kernel/aic8800/Makefile
+            echo "Local patches:"
+            for patch in package/kernel/aic8800/patches/*.patch; do
+              echo "  ${patch##*/}"
+            done
+          } > files/etc/aic8800-origin
           for p in ../patches/openwrt/*.patch; do
             echo "applying ${p##*/}"
             git apply --whitespace=nowarn "$p"
@@ -312,6 +325,8 @@ jobs:
         run: |
           {
             echo "repository: $GITHUB_REPOSITORY $GITHUB_SHA"
+            echo "AIC8800 provenance (also in /etc/aic8800-origin):"
+            cat openwrt/files/etc/aic8800-origin
             echo "openwrt: $OPENWRT_REPO ${{ steps.src.outputs.commit }}"
             cat feeds.revisions 2>/dev/null
             grep -H . openwrt/target/linux/generic/kernel-6.18 2>/dev/null

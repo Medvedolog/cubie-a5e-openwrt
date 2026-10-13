@@ -1,0 +1,45 @@
+From: OpenWrt aic8800 packaging
+Subject: [PATCH] SDIO: rx: tell FORTIFY the radiotap area is rtap_len bytes
+
+The 6.12 kernel builds this driver with FORTIFY_SOURCE, which rejects the
+HE radiotap write:
+
+    fortify-string.h:571:25: error: call to '__write_overflow_field'
+      declared with attribute warning: detected write beyond size of
+      field (1st parameter); maybe use struct_group()?
+
+It is a provenance problem, not an overflow. rwnx_rx_rtap_hdrlen() adds
+ALIGN(len, 2) + sizeof(struct ieee80211_radiotap_he) under exactly the
+condition and alignment this writer uses, and the buffer comes from
+skb_push(skb, rtap_len) - but the compiler only sees pos derived from a
+pointer to the 8-byte radiotap header.
+
+Use unsafe_memcpy() at this one call site with that reasoning recorded,
+rather than demoting -Wattribute-warning for the whole driver, so a
+genuine fortify hit anywhere else still stops the build.
+---
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_rx.c
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_fdrv/rwnx_rx.c
+@@ -1437,7 +1437,22 @@
+ 		while ((pos - (u8 *)rtap) & 1)
+ 			pos++;
+ 		rtap->it_present |= cpu_to_le32(1 << IEEE80211_RADIOTAP_HE);
++		/*
++		 * FORTIFY_SOURCE traces pos back to rtap, whose type is just the
++		 * 8-byte radiotap header, and so reads this as a write past the
++		 * end of a field. The buffer is really rtap_len bytes - see the
++		 * skb_push() at the top of this function - and
++		 * rwnx_rx_rtap_hdrlen() reserves ALIGN(len, 2) plus sizeof(struct
++		 * ieee80211_radiotap_he) under the same HE_SU condition and the
++		 * same alignment this writer uses. The write is in bounds; only
++		 * its provenance is unprovable to the compiler.
++		 */
++#ifdef unsafe_memcpy
++		unsafe_memcpy(pos, &he, sizeof(he),
++			      /* radiotap area is rtap_len bytes, see rwnx_rx_rtap_hdrlen() */);
++#else
+ 		memcpy(pos, &he, sizeof(he));
++#endif
+ 		pos += sizeof(he);
+ 	}
+ 

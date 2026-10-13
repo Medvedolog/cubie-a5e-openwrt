@@ -278,3 +278,26 @@ logread | grep -Ei 'aic|hostapd|netifd|wireless' | tail -100
 неисправимых `-110` и лишних `radioX`; затем AP с клиентом,
 DHCP и передача трафика. Это **цель для приёмки**, не уже полученные
 результаты. Подробности: [TEST-PLAN](TEST-PLAN.md).
+
+## 10. Akorshun FORTIFY patch and exact driver provenance (2026-10-13)
+
+A tester noticed a ninth SDIO patch in
+[akorshun/aic8800-openwrt](https://github.com/akorshun/aic8800-openwrt/tree/master/package/aic8800/patches)
+that is absent from the
+[ImmortalWrt packaging](https://github.com/immortalwrt/immortalwrt/tree/master/package/kernel/aic8800/patches).
+
+Imported unchanged as
+[`100-sdio-rx-fortify-radiotap.patch`](../package/kernel/aic8800/patches/100-sdio-rx-fortify-radiotap.patch)
+(the original used `090`; our `090` is the MMC-clock patch).
+The fix tells FORTIFY_SOURCE that the HE radiotap write uses the
+already-reserved `rtap_len` area, selecting `unsafe_memcpy()` if
+provided by kernel headers. It addresses compiler diagnostics, not
+hardware SDIO `-110` during firmware transfer. This patch's
+application and kernel compatibility must still pass the current CI.
+
+Driver sources: Radxa `2026-03-10 / 89f865b8`. Packaging baseline:
+ImmortalWrt `r5` (2026-09-04 cfg80211 compatibility change).
+Local build package revision with patches `090` and `100`: `r6`.
+For transparent attribution, the new firmware will contain
+`/etc/aic8800-origin`. Full details:
+[`package/kernel/aic8800/README.md`](../package/kernel/aic8800/README.md).

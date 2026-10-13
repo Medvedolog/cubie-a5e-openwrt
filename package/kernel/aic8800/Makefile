@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
 # Copyright (c) 2025 ImmortalWrt.org
+#
+# Package provenance: ImmortalWrt package/kernel/aic8800, release r5 baseline
+# https://github.com/immortalwrt/immortalwrt/tree/master/package/kernel/aic8800
+# Vendor source: radxa-pkg/aic8800 at PKG_SOURCE_DATE + PKG_SOURCE_VERSION below.
+# Local A5E revision r6: extra 090 MMC-clock and 100 SDIO radiotap FORTIFY
+# patches (100 is imported from akorshun/aic8800-openwrt, original name 090).
+# See README.md in this package directory for links and exact revisions.
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=aic8800
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/radxa-pkg/aic8800.git

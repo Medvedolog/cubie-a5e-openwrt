@@ -93,6 +93,16 @@ DRAM в U-Boot.
 
 См. [анализ и сравнение с OPIZ3, ImmortalWrt, Armbian](docs/AIC8800-SDIO-WIFI.ru.md), [инструкцию recovery](docs/AIC8800-RECOVERY.ru.md) и [план тестов](docs/TEST-PLAN.md).
 
+## Откуда драйвер и какой он версии
+
+Пакет **на базе ImmortalWrt `r5`**, исходники драйвера и firmware
+**Radxa `89f865b8` от 10.03.2026**. В этой ветке с собственными патчами
+`090` (ограничение SDIO-частоты) и **`100`** (FORTIFY/radiotap от
+akorshun) локальная ревизия поднята до **`r6`**.
+Полная цепочка исходников и патчей:
+[`package/kernel/aic8800/README.md`](package/kernel/aic8800/README.md).
+Тестер может прочитать `cat /etc/aic8800-origin` прямо на новой прошивке.
+
 ## План
 
 Полный план с задачами и статусом: [docs/ROADMAP.md](docs/ROADMAP.md) (по-английски).
