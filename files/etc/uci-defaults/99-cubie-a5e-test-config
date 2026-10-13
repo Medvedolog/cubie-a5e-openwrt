@@ -1,0 +1,25 @@
+#!/bin/sh
+# Cubie A5E laboratory first-boot defaults. Deliberately open AP.
+# Only run once wireless configuration has been generated; nonzero exit
+# leaves this uci-defaults script available for the next boot.
+uci -q get wireless.radio0 >/dev/null 2>&1 || exit 1
+uci -q get wireless.default_radio0 >/dev/null 2>&1 || exit 1
+uci -q get network.lan >/dev/null 2>&1 || exit 1
+
+# Use the canonical UCI address/netmask form of 192.168.1.1/24.
+uci set network.lan.ipaddr='192.168.1.1'
+uci set network.lan.netmask='255.255.255.0'
+uci set network.lan.ip6assign='60'
+
+uci set wireless.radio0.channel='36'
+uci set wireless.radio0.htmode='HE80'
+uci set wireless.radio0.country='PA'
+uci set wireless.radio0.cell_density='0'
+uci set wireless.radio0.txpower='20'
+uci set wireless.radio0.disabled='0'
+
+uci set wireless.default_radio0.ssid='OpenWrt'
+uci set wireless.default_radio0.encryption='none'
+uci -q delete wireless.default_radio0.key
+
+uci commit network && uci commit wireless

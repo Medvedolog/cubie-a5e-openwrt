@@ -16,6 +16,7 @@ Needs: sfdisk, mtools (mcopy), dtc tools (fdtget), e2fsprogs (debugfs).
 import argparse
 import glob
 import gzip
+import hashlib
 import json
 import os
 import shutil
@@ -24,6 +25,7 @@ import sys
 import tempfile
 
 FAILED = []
+PARTITION_DIGESTS = {}
 
 
 def check(ok, what):
@@ -125,12 +127,30 @@ def check_rootfs(ext4):
     keys = ls("/etc/apk/keys")
     check(len(keys) > 0, "apk keys: %s" % keys)
     check("radxa,cubie-a5e" in cat("/etc/board.d/02_network"), "board.d/02_network knows radxa,cubie-a5e")
+    startup = cat("/etc/uci-defaults/99-cubie-a5e-test-config")
+    check("wireless.radio0.channel='36'" in startup and
+          "wireless.default_radio0.encryption='none'" in startup and
+          "wireless.radio0.country='PA'" in startup,
+          "first-boot Cubie A5E lab Wi-Fi configuration")
     rel = cat("/etc/openwrt_release")
     print("  INFO    " + " ".join(l for l in rel.splitlines() if l.startswith(("DISTRIB_RELEASE", "DISTRIB_REVISION"))))
     for f in ls("/etc/apk/repositories.d"):
         for line in cat("/etc/apk/repositories.d/" + f).splitlines():
             if line and not line.startswith("#"):
                 print("  INFO    repository (%s): %s" % (f, line))
+
+
+def sha256_partition(img, offset, length):
+    digest = hashlib.sha256()
+    with open(img, "rb") as f:
+        f.seek(offset)
+        while length:
+            data = f.read(min(length, 4 * 1024 * 1024))
+            if not data:
+                raise ValueError("Truncated image while hashing partition")
+            digest.update(data)
+            length -= len(data)
+    return digest.hexdigest()
 
 
 def check_image(img_gz, tmp):
@@ -144,6 +164,16 @@ def check_image(img_gz, tmp):
         print("  part%d start %d size %d MiB type %s" % (i, p["start"], p["size"] * 512 >> 20, p["type"]))
     check(len(parts) == 2, "two partitions (boot, rootfs)")
     boot, root = parts[0], parts[1]
+    # Profiles of one filesystem must share byte-identical boot and rootfs
+    # partitions. Only the SPL/U-Boot area before partition 1 may vary.
+    fs = "ext4" if "-ext4-" in os.path.basename(img_gz) else "squashfs"
+    digests = (
+        sha256_partition(img, boot["start"] * 512, boot["size"] * 512),
+        sha256_partition(img, root["start"] * 512, root["size"] * 512),
+    )
+    baseline = PARTITION_DIGESTS.setdefault(fs, digests)
+    check(digests == baseline,
+          "%s profile shares identical boot (FIT) and rootfs partitions" % fs)
     check(16 <= boot["size"] * 512 >> 20 <= 64, "boot partition 16..64 MiB")
     check(100 <= root["size"] * 512 >> 20 <= 1024, "rootfs partition 100..1024 MiB (no 10 GB partitions)")
     with open(img, "rb") as f:

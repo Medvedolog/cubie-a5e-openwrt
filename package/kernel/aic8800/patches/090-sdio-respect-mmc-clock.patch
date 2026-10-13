@@ -1,0 +1,11 @@
+--- a/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/aic_bsp_driver.h
++++ b/src/SDIO/driver_fw/driver/aic8800/aic8800_bsp/aic_bsp_driver.h
+@@ -530,8 +530,8 @@
+ 
+ 
+ #define FEATURE_SDIO_CLOCK          50000000 // 0: default, other: target clock rate
+-#define FEATURE_SDIO_CLOCK_V3       150000000 // 0: default, other: target clock rate
++#define FEATURE_SDIO_CLOCK_V3       0 // respect host/DTS SDIO clock limit on Cubie A5E
+ #define FEATURE_SDIO_PHASE          2        // 0: default, 2: 180°
+ 
+ struct aicbt_patch_table {
