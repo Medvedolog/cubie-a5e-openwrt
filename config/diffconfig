@@ -8,9 +8,16 @@ CONFIG_TARGET_sunxi_cortexa55_DEVICE_radxa_cubie-a5e=y
 CONFIG_TARGET_ROOTFS_EXT4FS=y
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
 # CONFIG_TARGET_ROOTFS_INITRAMFS is not set
-CONFIG_TARGET_ROOTFS_PARTSIZE=512
+CONFIG_TARGET_ROOTFS_PARTSIZE=2048
 CONFIG_TARGET_KERNEL_PARTSIZE=32
 CONFIG_SIGNED_PACKAGES=y
+
+# DevBuild labels the pinned upstream development tree without claiming
+# compatibility with a numbered stable OpenWrt release.
+CONFIG_VERSION_DIST="OpenWrt"
+CONFIG_VERSION_NUMBER="DevBuild 001"
+CONFIG_VERSION_CODE="A5E"
+
 # ccache is a developer option: it needs DEVEL
 CONFIG_DEVEL=y
 CONFIG_CCACHE=y
