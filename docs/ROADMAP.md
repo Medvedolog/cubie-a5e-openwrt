@@ -1,19 +1,21 @@
 # Roadmap
 
-Development plan of the project, in the order of work. Status as of
-2026-10-12. "Done" means done in the repository and CI; **nothing is
-verified on hardware** until a stage says so, with a report from a board.
+Development plan in the order of work. Updated **2026-10-13** with the
+first hardware evidence. "Done" still distinguishes source / CI from
+hardware validation. The Micron 4 GB board boots ext4 from microSD;
+AIC8800 firmware sometimes loads, sometimes fails with SDIO `-110`.
+See [field report](AIC8800-SDIO-WIFI.ru.md) and [test plan](TEST-PLAN.md).
 
 | Stage | What | Status |
 |---|---|---|
 | 0 | Repository, build base, research | done |
-| 1 | First image that builds | in progress (run 4) |
-| 2 | First boot on hardware | waiting for stage 1 |
-| 3 | Wi-Fi works (AP and client, 2.4/5 GHz) | planned |
+| 1 | First image that builds | **done** (multiple CI builds succeeded; hardware ext4 boot confirmed) |
+| 2 | First boot on hardware | **partial:** microSD/ext4 confirmed; ports/reboot/sysupgrade pending |
+| 3 | Wi-Fi works (AP and client, 2.4/5 GHz) | **in progress:** AIC8800 SDIO/firmware/PHY intermittent; AP/client tests pending |
 | 4 | Own SDK, ImageBuilder and signed apk repository | planned |
-| 5 | Image contents and first-boot setup | planned |
-| 6 | Test plan and releases | partly done |
-| 7 | AIC8800 driver audit and fixes | after stage 3 |
+| 5 | Image contents and first-boot setup | **partial:** laboratory UCI defaults and MAC/radioX fix; secure production AP pending |
+| 6 | Test plan and releases | test plan added, test releases; gate still pending |
+| 7 | AIC8800 driver audit and fixes | **started:** 150 MHz override disabled; -110 under investigation |
 | 8 | One image for all memory types | planned |
 | 9 | USB 3.0 image variant | planned |
 | 10 | Upstream: OpenWrt PR, official snapshot | ongoing |
@@ -28,7 +30,7 @@ verified on hardware** until a stage says so, with a report from a board.
 - Sources studied: ImmortalWrt, Armbian, Radxa BSP and overlays, DietPi,
   community builds and the 4PDA topic ([COMMUNITY-FINDINGS](COMMUNITY-FINDINGS.md)).
 
-## 1. First image that builds — in progress
+## 1. First image that builds — done for experimental images
 
 - [x] CI from source: OpenWrt commit recorded, `dl/` and ccache caches,
   GitHub or self-hosted runner, a new push waits for the running build.
@@ -40,7 +42,7 @@ verified on hardware** until a stage says so, with a report from a board.
   partitions, rootfs contents, kernel options.
 - [x] Publishing: test builds as pre-release `cubie-a5e-test` with a table
   of images.
-- [ ] Run 4 green: kernel, aic8800 module, images, checks.
+- [x] Later builds succeeded and test images were published; ext4 rootfs on a Micron 4 GB board verified from dmesg. New commits still require their own CI result.
 
 Exit: pre-release `cubie-a5e-test` with both DRAM images, all checks pass.
 
@@ -49,10 +51,10 @@ Exit: pre-release `cubie-a5e-test` with both DRAM images, all checks pass.
 On the project's board (V1.1, Micron 4 GB, image `dram-micron-4g-m6`),
 then on testers' boards.
 
-- [ ] UART log: SPL, DRAM size, U-Boot, kernel, no hang.
+- [x] Kernel reached ext4 rootfs read-write with DRAM initialized on the Micron 4 GB test board. Full UART power-on log / cross-board tests remain pending.
 - [ ] Both Ethernet ports: which jack is `eth0` (LAN) and `eth1` (WAN);
   link at 1 Gbit/s; reboot keeps both ports.
-- [ ] microSD root, ext4 and squashfs images, `sysupgrade`.
+- [x] microSD ext4 rootfs observed; [ ] squashfs image and `sysupgrade` not tested.
 - [ ] USB 2.0 ports; M.2 NVMe (`lspci`, `nvme list`, read/write).
 - [ ] reboot and power-off (TF-A PSCI; fallbacks known from other T527
   work: watchdog restart priority, AXP717 soft power-off).
@@ -65,8 +67,7 @@ sysupgrade.
 
 ## 3. Wi-Fi works
 
-- [ ] `aic8800_bsp` / `aic8800_fdrv` load, firmware found, `phy0` and
-  `wlan0` appear; cold start below 40 °C (reported problem).
+- [ ] `aic8800_bsp` / `aic8800_fdrv` register reliably after every cold start: one success and one `-110` failure on the same microSD; PHY observed after successful firmware load. `wlan0`/AP readiness not independently confirmed.
 - [ ] AP 2.4 and 5 GHz with WPA2 and WPA3 (WPA2 failures were reported on
   older builds); country code set vs unset.
 - [ ] Client mode (LuCI "Join network"); AP and client together.
@@ -119,14 +120,14 @@ without mwan3, luci-app-mwan3, watchcat, nlbwmon; Bluetooth stays off.
 - [x] Test pre-release `cubie-a5e-test`, rolling `cubie-a5e-snapshot-latest`
   from `main`, fixed releases by tag with notes from `docs/releases/<tag>.md`
   (`release-tag.yml`).
-- [ ] `docs/TEST-PLAN.md`: commands for Wi-Fi AP/STA 2.4/5 GHz, USB2, NVMe,
-  both GMACs, reboot/power/sysupgrade, what to send.
+- [x] [`docs/TEST-PLAN.md`](TEST-PLAN.md) created for boot, MMC identity, UCI radio renumbering, AP/STA, recovery and repeated cold boots. Hardware gate pending.
 - [ ] `main` branch and the first beta release after stages 2–3.
 - [ ] Test reports thread (as in the Orange Pi Zero 3 project).
 
 ## 7. AIC8800 driver audit and fixes
 
-After Wi-Fi works, following the Orange Pi Zero 3 UWE5622 audit: KASAN-class
+Initial investigation started while Wi-Fi is intermittent. After Wi-Fi works,
+continue following the Orange Pi Zero 3 UWE5622 audit: KASAN-class
 bugs, `dump_station`, honest station statistics. Patches numbered 010+ in
 `package/kernel/aic8800/patches`, rebased onto ImmortalWrt's.
 
@@ -177,3 +178,41 @@ The M.2 slot and the USB 3.0 port share one PHY
   here, as the Orange Pi Zero 3 project does.
 - [ ] AIC8800 in OpenWrt: only after the audit, and only if the driver
   quality allows it.
+
+## 11. Current blocker: cold boot SDIO and persistent Wi-Fi identity
+
+### Confirmed on the test board (2026-10-13)
+
+- MMC `4020000.mmc` is microSD, `4021000.mmc` is onboard SDIO Wi-Fi.
+  The logical `mmc0/mmc1` order can change between reboots.
+- On a successful start AIC8800 requests 35 MHz but operates at 33.33 MHz,
+  firmware registers a PHY, and its MAC stayed `fc:23:cd:03:8e:78`
+  between checked reboots.
+- On a failed start the driver retries firmware transfer twice and hits
+  `-110` at `4021000.mmc`, even without its old 150 MHz override.
+- An existing UCI `radio0.path` with a previous `mmcN` can be orphaned;
+  `wifi config` then creates `radio1` for the same device.
+
+### Changes implemented, still needing a hardware release gate
+
+- [x] Disable forced 150 MHz SDIO; leave limit to MMC/DTS.
+- [x] Retry `uci-defaults` when Wi-Fi PHY has not appeared; run `wifi config`
+  after driver loading.
+- [x] Record the onboard detected MAC as `wireless.radio0.macaddr` and
+  clean up duplicate sections from previous MMC enumerations.
+- [x] Remove `wireless.default_radio0.disabled` from first-boot lab AP.
+- [x] Add manual-only [`aic8800-recover`](AIC8800-RECOVERY.ru.md)
+  using an isolated `4021000.mmc` unbind/bind, with lock and attempt limits.
+- [ ] Confirm these changes on a freshly flashed image across a series
+  of cold starts and reboots (not just successful CI).
+- [ ] Port OPIZ3-style **persistent** `ieee80211 add` handling to onboard
+  AIC8800 (MAC + current path), preserving modified UCI sections.
+- [ ] Test recovery manually after actual `-110` with Ethernet/UART.
+- [ ] Run isolated SDIO 25 MHz vs 35 MHz, BLDO1 always-on, MMC pwrseq
+  timing experiments; instrument the first failing firmware transaction.
+- [ ] Only then consider automatic, rate-limited recovery.
+
+References: [detailed investigation](AIC8800-SDIO-WIFI.ru.md),
+[hardware test plan](TEST-PLAN.md),
+[OPIZ3 recovery](https://github.com/Medvedolog/opiz3-wlan-backport/blob/main/package/kernel/uwe5622/files/uwe5622-recover),
+[Armbian A5E power patch](https://github.com/armbian/build/blob/main/patch/kernel/archive/sunxi-6.18/patches.backports/34-fix-wifi-regulator-cubie-a5e.patch).
