@@ -1,0 +1,27 @@
+#!/bin/sh
+# Boot-time only: do not reset a working AP, do not poll continuously.
+# The underlying recovery has its own lock, 3-per-30min limiter and storage guard.
+. /lib/aic8800.sh || exit 1
+delay=${1:-45}
+sleep "$delay"
+
+logger -t aic8800-auto "checking Cubie A5E AIC8800 after ${delay}s"
+# This package is Cubie A5E-specific. No reset without the physical
+# MMC host and mmc-pwrseq, and never on an MMC host with storage.
+aic_preflight >/dev/null 2>&1 || exit 0
+# Only act if driver has actually attempted to initialize.
+[ -d /sys/module/aic8800_bsp ] || exit 0
+[ -d /sys/module/aic8800_fdrv ] || exit 0
+# A PHY already present implies the SDIO/firmware load succeeded.
+# Never disrupt it merely because hostapd or a client disconnected.
+if aic_phy >/dev/null 2>&1; then
+	logger -t aic8800-auto "PHY present; no recovery required"
+	exit 0
+fi
+# Avoid resetting the controller if a radio was intentionally configured
+# as disabled. No UCI radio yet is normal on the first failed boot.
+for r in $(aic_radios); do
+	[ "$(uci -q get wireless.$r.disabled)" = 1 ] && exit 0
+done
+logger -t aic8800-auto "AIC modules loaded but PHY absent; one recovery attempt"
+/usr/sbin/aic8800-recover --run
