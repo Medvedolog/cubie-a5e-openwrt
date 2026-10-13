@@ -2,6 +2,23 @@
 
 **[Русская версия / Russian version](README.ru.md)**
 
+## **TESTERS WANTED: universal DRAM boot and onboard AIC8800D80 Wi-Fi!**
+
+**We need Radxa Cubie A5E owners with different RAM chips and capacities (Micron, Samsung, etc.) to validate the universal U-Boot image (`dram-universal`) and WLAN/SDIO reliability.** The universal image is **not yet validated across all board variants**; Wi-Fi may fail on cold boot with SDIO `-110`.
+
+**Please report:** DRAM vendor/capacity and board revision; `dram-universal` boot results (including repeated cold boots); UART logs on failure; 2.4/5 GHz Wi-Fi, AP and client connectivity tests. **Use UART or wired Ethernet as a backup when testing Wi-Fi recovery.**
+
+**[Download test images](../../releases/tag/cubie-a5e-test) · [Test plan](docs/TEST-PLAN.md) · [Report results / open an Issue](../../issues/new)**
+
+## **НУЖНЫ ТЕСТЕРЫ: универсальная загрузка DRAM и встроенный Wi-Fi AIC8800D80!**
+
+**Ищем владельцев Radxa Cubie A5E с разными производителями и объёмами оперативной памяти (Micron, Samsung и др.), чтобы проверить универсальный U-Boot (`dram-universal`) и стабильность WLAN/SDIO.** Универсальный образ ещё **не проверен на всех вариантах платы**; Wi-Fi иногда не стартует после холодной загрузки с ошибкой SDIO `-110`.
+
+**Особенно нужны:** тип DRAM и ревизия платы; результат загрузки `dram-universal` (включая холодные старты); UART-лог при ошибке; результаты работы Wi-Fi 2,4/5 ГГц, точки доступа и подключения клиентов. **Для тестов восстановления Wi-Fi обеспечьте доступ через UART или Ethernet.**
+
+**[Скачать тестовые образы](../../releases/tag/cubie-a5e-test) · [План испытаний](docs/TEST-PLAN.md) · [Сообщить о результатах / открыть Issue](../../issues/new)**
+
+
 A clean OpenWrt build for the Radxa Cubie A5E: OpenWrt main with the A527
 support that is under review, built from source on GitHub Actions, with
 the onboard Wi-Fi (AIC8800D80, SDIO), both Gigabit Ethernet ports, USB and
