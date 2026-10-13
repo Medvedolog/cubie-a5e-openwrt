@@ -1,0 +1,154 @@
+#!/bin/sh
+# Manual-only AIC8800D80 SDIO recovery for Cubie A5E.
+# Initial test only with UART or wired Ethernet, not over the Wi-Fi AP.
+# Usage: aic8800-recover --check | --run
+
+. /lib/aic8800.sh || exit 1
+TAG=aic8800-recover
+LOCKDIR=/var/run/aic8800-recover.lock
+STATE=/tmp/aic8800-recover.times
+MAX_TRIES=3
+WINDOW=1800
+UNBOUND=0
+DRIVER_PATH=
+HOST=
+log() { logger -t "$TAG" "$*"; echo "$TAG: $*"; }
+fail() { log "ERROR: $*"; exit 1; }
+cleanup() {
+    if [ "$UNBOUND" = 1 ] && [ -n "$DRIVER_PATH" ] &&
+       [ -n "$HOST" ] && [ ! -L "$HOST/driver" ]; then
+        log "emergency rebind of $AIC_CONTROLLER"
+        echo "$AIC_CONTROLLER" > "$DRIVER_PATH/bind" 2>/dev/null || :
+    fi
+    rmdir "$LOCKDIR" 2>/dev/null || :
+}
+unload_module() {
+    local mod pid i
+    mod=$1
+    [ -d "/sys/module/$mod" ] || return 0
+    rmmod "$mod" &
+    pid=$!
+    i=0
+    while kill -0 "$pid" 2>/dev/null && [ "$i" -lt 20 ]; do
+        sleep 1
+        i=$((i + 1))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || :
+        sleep 1
+        kill -9 "$pid" 2>/dev/null || :
+        wait "$pid" 2>/dev/null || :
+        log "rmmod $mod timed out: NOT resetting SDIO"
+        return 1
+    fi
+    wait "$pid" 2>/dev/null || return 1
+    [ ! -d "/sys/module/$mod" ]
+}
+
+case "$1" in
+    --check)
+        aic_preflight || exit 1
+        echo "host: $(aic_host), enumerated as $(aic_host_name)"
+        echo "SDIO: $(aic_sdio_present && echo present || echo absent)"
+        echo "PHY: $(aic_phy || echo absent)"
+        echo "MAC: $(aic_phy_mac || echo absent)"
+        echo "UCI radios: $(aic_radios | tr '\n' ' ')"
+        for mod in aic8800_bsp aic8800_fdrv; do
+            [ -d "/sys/module/$mod" ] && echo "$mod loaded" ||
+                echo "$mod not loaded"
+        done
+        exit 0 ;;
+    --run) ;;
+    *) echo "Usage: aic8800-recover --check | --run" >&2; exit 2 ;;
+esac
+
+[ "$(id -u)" = 0 ] || fail "must be root"
+aic_preflight || exit 1
+mkdir "$LOCKDIR" 2>/dev/null || fail "another recovery is running"
+trap cleanup 0
+trap 'exit 130' 2
+trap 'exit 143' 15
+
+now=$(date +%s)
+recent=$(awk -v n="$now" -v w="$WINDOW" 'n >= $1 && n - $1 < w'     "$STATE" 2>/dev/null | wc -l)
+[ "$recent" -lt "$MAX_TRIES" ] ||
+    fail "$recent attempts in $WINDOW seconds: refusing a reset loop"
+printf '%s\n' "$now" >> "$STATE" || fail "cannot record attempt count"
+
+HOST=$(aic_host) || fail "host vanished"
+DRIVER_PATH=$(readlink -f "$HOST/driver") ||
+    fail "MMC driver unavailable"
+[ -w "$DRIVER_PATH/unbind" ] && [ -w "$DRIVER_PATH/bind" ] ||
+    fail "MMC sysfs not writable"
+
+log "manual recovery attempt $((recent + 1))/$MAX_TRIES; MMC $(aic_host_name)"
+radios=$(aic_radios)
+for r in $radios; do
+    /sbin/wifi down "$r" 2>/dev/null || :
+done
+
+# AIC fdrv owns Wi-Fi; unload it before the BSP. Never detach a host
+# while either module could still call into SDIO.
+unload_module aic8800_fdrv || fail "cannot unload aic8800_fdrv"
+unload_module aic8800_bsp || fail "cannot unload aic8800_bsp"
+[ ! -d /sys/module/aic8800_fdrv ] &&
+[ ! -d /sys/module/aic8800_bsp ] || fail "AIC modules still present"
+aic_preflight || fail "preflight failed after module unload"
+
+log "unbind $AIC_CONTROLLER"
+echo "$AIC_CONTROLLER" > "$DRIVER_PATH/unbind" ||
+    fail "MMC unbind failed"
+UNBOUND=1
+sleep 1
+log "bind $AIC_CONTROLLER"
+echo "$AIC_CONTROLLER" > "$DRIVER_PATH/bind" ||
+    fail "MMC bind failed"
+UNBOUND=0
+
+i=0
+while ! aic_sdio_present && [ "$i" -lt 12 ]; do
+    sleep 1
+    i=$((i + 1))
+done
+aic_sdio_present || fail "AIC SDIO functions did not enumerate"
+
+log "reload AIC BSP / fdrv"
+/sbin/modprobe aic8800_bsp || fail "modprobe aic8800_bsp failed"
+/sbin/modprobe aic8800_fdrv || fail "modprobe aic8800_fdrv failed (check dmesg)"
+i=0
+while ! aic_phy >/dev/null 2>&1 && [ "$i" -lt 30 ]; do
+    sleep 1
+    i=$((i + 1))
+done
+phy=$(aic_phy) || fail "onboard PHY missing after 30s"
+log "recovered PHY $phy, MAC $(aic_phy_mac)"
+
+# Only if first-boot defaults are still pending: they may have been
+# postponed because no PHY existed when the board first started.
+defaults=/etc/uci-defaults/99-cubie-a5e-test-config
+if [ -f "$defaults" ]; then
+    if ( . "$defaults" ); then
+        rm -f "$defaults"
+        log "completed pending first-boot UCI defaults"
+    else
+        log "pending first-boot defaults still failed"
+    fi
+fi
+
+/sbin/wifi config || fail "wifi config failed"
+radios=$(aic_radios)
+[ -n "$radios" ] ||
+    fail "PHY exists but no UCI section matches its MAC or controller"
+
+# Only the onboard radios, not blanket 'wifi reload' on USB adapters.
+for r in $radios; do
+    if ! ubus call network.wireless up "{\"device\":\"$r\"}" >/dev/null 2>&1; then
+        log "$r not known to netifd; network reload fallback"
+        ubus call network reload >/dev/null 2>&1 || :
+        sleep 2
+        ubus call network.wireless up "{\"device\":\"$r\"}" >/dev/null 2>&1 ||
+            fail "netifd cannot enable $r"
+    fi
+done
+log "recovery completed; verify AP: iw dev; wifi status; logread -e hostapd"
+exit 0
