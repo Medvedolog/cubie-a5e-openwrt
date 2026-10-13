@@ -133,6 +133,9 @@ jobs:
             if [ -e "openwrt/$f" ]; then echo "$f"; fi; done)
           if [ -n "$clash" ]; then echo "would overwrite: $clash"; exit 1; fi
           cp -a ../target ../package ../files .
+          # Validate both POSIX/ash scripts before embedding them in the firmware.
+          sh -n files/lib/aic8800.sh
+          sh -n files/usr/sbin/aic8800-recover
           # GitHub Contents API stores new scripts as 0644; set executable bit in image.
           chmod 0755 files/usr/sbin/aic8800-recover
           for p in ../patches/openwrt/*.patch; do
