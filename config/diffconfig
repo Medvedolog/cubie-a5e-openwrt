@@ -12,6 +12,11 @@ CONFIG_TARGET_ROOTFS_PARTSIZE=2048
 CONFIG_TARGET_KERNEL_PARTSIZE=32
 CONFIG_SIGNED_PACKAGES=y
 
+# Build the ImageBuilder from this exact patched kernel and package ABI.
+# It uses the immutable signed GitHub APK feed of the same firmware commit.
+CONFIG_IB=y
+# CONFIG_IB_STANDALONE is not set
+
 # DevBuild labels the pinned upstream development tree without claiming
 # compatibility with a numbered stable OpenWrt release.
 CONFIG_VERSION_DIST="OpenWrt"
