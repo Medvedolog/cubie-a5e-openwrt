@@ -18,12 +18,12 @@
    APK**, исходный **подписанный** `packages.adb` и `public-key.pem`.
    Подпись не пересоздаётся ключом публикационного workflow.
 2. В GitHub Releases создаётся неизменяемый pre-release
-   `cubie-a5e-pkgs-<полный Git SHA>`. Индекс и каждый APK-файл —
+   `cubie-a5e-pkgs-<Git SHA12>-<GitHub run_id>-<attempt>`. Индекс и каждый APK-файл —
    отдельные assets в корне релиза, поэтому APK может скачивать пакеты
    непосредственно с GitHub (HTTP 302 обрабатывается клиентом).
 3. В опубликованном образе `/etc/apk/repositories.d/distfeeds.list`
    заранее задан адрес:
-   `https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-<SHA>/packages.adb`.
+   `https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-<SHA12>-<RUN_ID>-<ATTEMPT>/packages.adb`.
    Официальные Snapshot feeds исключены.
 4. ImageBuilder собирается **из того же самого** дерева OpenWrt и
    `.config`, с `CONFIG_IB=y`, `CONFIG_IB_STANDALONE` отключён.
@@ -37,8 +37,8 @@
    неизменяемом releases/tag-репозитории. В тегированных релизах
    ImageBuilder наследуется из испытанного rolling build.
 
-**GitHub Pages не требуется.** Для каждого Git-коммита адрес отдельный,
-поэтому новые сборки не ломают возможность `apk add` в старой прошивке.
+**GitHub Pages не требуется.** Для каждого запуска и попытки адрес отдельный,
+поэтому новые сборки не ломают возможность `apk add` в старой прошивке. Номер запуска важен: один и тот же коммит можно пересобрать с другими feeds или входным OpenWrt SHA, поэтому привязка только к Git SHA была бы недостаточной.
 
 ## Использование на A5E
 
