@@ -152,10 +152,13 @@ fi
 
 # Linux ext4 supports online growth. Never run offline e2fsck on a mounted
 # root device. A normal second boot sees the new partition geometry here.
-if resize2fs "$rootdev" 2>&1 | logger -t "$tag"; then
+# Preserve resize2fs' exit status. Do not pipe it directly into logger:
+# POSIX ash otherwise reports only the logger command's status.
+if result=$(resize2fs "$rootdev" 2>&1); then
+    [ -z "$result" ] || log "$result"
     rm -f /etc/.a5e-root-grow-reboot-requested
     log "ext4 root growth completed on $rootdev"
     exit 0
 fi
-log "resize2fs failed; retry on next boot"
+log "resize2fs failed: $result; retry on next boot"
 exit 1
