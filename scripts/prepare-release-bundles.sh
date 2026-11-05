@@ -81,6 +81,10 @@ ib_root=$(find "${scratch}" -mindepth 1 -maxdepth 1 -type d \
 printf '%s/packages.adb\n' "${feed_url}" > "${ib_root}/repositories"
 mkdir -p "${ib_root}/keys"
 cp public-key.pem "${ib_root}/keys/public-key.pem"
+# Preserve first-boot UCI, AIC8800 diagnostics/recovery and firmware
+# provenance in images generated later with ImageBuilder.
+cp -a files "${ib_root}/a5e-overlay"
+test -s "${ib_root}/a5e-overlay/etc/uci-defaults/99-cubie-a5e-test-config"
 printf '%s/packages.adb\n' "${feed_url}" > "${ib_root}/a5e-distfeeds.list"
 
 # The IB's remote repositories file controls package downloads, but does
@@ -95,13 +99,27 @@ source = p.read_text()
 needle = "\t$(call prepare_rootfs,$(TARGET_DIR),$(USER_FILES),$(DISABLED_SERVICES))"
 if source.count(needle) != 1:
     raise SystemExit("ImageBuilder prepare_rootfs recipe changed upstream")
+# A527 upstream profile does not select our AIC8800 package itself.
+# Include it in the ImageBuilder profile without forcing it on Avaota A1.
+profile_needle = "BUILD_PACKAGES:=$(sort $(DEFAULT_PACKAGES) $($(USER_PROFILE)_PACKAGES) kernel)"
+if source.count(profile_needle) != 1:
+    raise SystemExit("ImageBuilder default package list changed upstream")
+profile_extra = (
+    "\nifneq ($(filter DEVICE_radxa_cubie-a5e,$(USER_PROFILE)),)"
+    "\nBUILD_PACKAGES += kmod-aic8800-sdio aic8800-sdio-firmware wpad-mbedtls"
+    "\nendif"
+)
+source = source.replace(profile_needle, profile_needle + profile_extra)
 extra = (
     "\n\t$(INSTALL_DIR) $(TARGET_DIR)/etc/apk/repositories.d"
     "\n\t$(CP) $(TOPDIR)/a5e-distfeeds.list $(TARGET_DIR)/etc/apk/repositories.d/distfeeds.list"
     "\n\t$(INSTALL_DIR) $(TARGET_DIR)/etc/apk/keys"
     "\n\t$(CP) $(TOPDIR)/keys/public-key.pem $(TARGET_DIR)/etc/apk/keys/public-key.pem"
 )
-p.write_text(source.replace(needle, needle + extra))
+# Board overlay first, user FILES may then override normal settings,
+# but the signed APK feed URL and key are enforced for kernel ABI safety.
+overlay = "\t$(CP) $(TOPDIR)/a5e-overlay/. $(TARGET_DIR)/\n"
+p.write_text(source.replace(needle, overlay + needle + extra))
 PY
 grep -q 'a5e-distfeeds.list' "${ib_root}/Makefile"
 cat > "${ib_root}/README-A5E-REPOSITORY.txt" <<EOF
