@@ -136,6 +136,14 @@ def check_rootfs(ext4):
     keys = ls("/etc/apk/keys")
     check(len(keys) > 0, "apk keys: %s" % keys)
     check("radxa,cubie-a5e" in cat("/etc/board.d/02_network"), "board.d/02_network knows radxa,cubie-a5e")
+    # A fresh ext4 image must contain the two-stage root expander, and
+    # image-builder output must carry it too through a5e-overlay.
+    grow = cat("/etc/uci-defaults/70-a5e-expand-ext4")
+    check('parted -s -f "$disk" unit s resizepart 2 100%' in grow
+          and 'resize2fs "$rootdev"' in grow
+          and '/sys/dev/block/$root_mm' in grow
+          and 'root_type" = ext4' in grow,
+          "safe root-only ext4 auto-grow for SD and NVMe root")
     startup = cat("/etc/uci-defaults/99-cubie-a5e-test-config")
     check("wireless.radio0.channel='36'" in startup and
           "wireless.default_radio0.encryption='none'" in startup and
@@ -276,8 +284,8 @@ def main():
     man = glob.glob(os.path.join(a.out, "*%s.manifest" % a.profile))
     if check(len(man) == 1, "manifest"):
         pkgs = dict(l.split(" - ", 1) for l in open(man[0]).read().splitlines() if " - " in l)
-        for p in ("kmod-aic8800-sdio", "aic8800-sdio-firmware", "kmod-nvme", "wpad-mbedtls",
-                  "luci", "kernel"):
+        for p in ("kmod-aic8800-sdio", "aic8800-sdio-firmware", "kmod-nvme",
+                  "parted", "resize2fs", "wpad-mbedtls", "luci", "kernel"):
             check(p in pkgs, "manifest: %s %s" % (p, pkgs.get(p, "")))
         for p in ("mwan3", "luci-app-mwan3", "watchcat", "nlbwmon", "luci-app-nlbwmon",
                   "kmod-aic8800-btusb", "wpad-basic-mbedtls"):
