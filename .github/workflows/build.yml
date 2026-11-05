@@ -135,6 +135,13 @@ jobs:
             if [ -e "openwrt/$f" ]; then echo "$f"; fi; done)
           if [ -n "$clash" ]; then echo "would overwrite: $clash"; exit 1; fi
           cp -a ../target ../package ../files .
+          # Never use official Snapshot feeds on this out-of-tree kernel.
+          # GitHub Releases serve a signed, immutable feed built with exactly
+          # the same kernel ABI, for this Git source commit.
+          FEED_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/cubie-a5e-pkgs-${GITHUB_SHA}/packages.adb"
+          mkdir -p files/etc/apk/repositories.d
+          printf '%s\n' "$FEED_URL" > files/etc/apk/repositories.d/distfeeds.list
+          echo "Pinned firmware APK feed: $FEED_URL"
           # Validate both POSIX/ash scripts before embedding them in the firmware.
           sh -n files/lib/aic8800.sh
           sh -n files/usr/sbin/aic8800-recover
@@ -191,11 +198,15 @@ jobs:
           # what has to survive defconfig
           for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE CONFIG_CCACHE \
                    CONFIG_PACKAGE_kmod-aic8800-sdio CONFIG_PACKAGE_aic8800-sdio-firmware \
-                   CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls \
+                   CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls CONFIG_IB \
                    CONFIG_PACKAGE_u-boot-radxa-cubie-a5e \
                    CONFIG_PACKAGE_trusted-firmware-a-sunxi-a523; do
             grep -qx "$c=y" .config || { echo "missing after defconfig: $c"; exit 1; }
           done
+          grep -qx '# CONFIG_IB_STANDALONE is not set' .config || {
+            echo 'ImageBuilder must use the pinned GitHub APK feed (not duplicate all packages)'
+            exit 1
+          }
           if grep -qx 'CONFIG_AIC8800_SDIO_BT_SUPPORT=y' .config; then
             echo "AIC8800 Bluetooth must stay off"; exit 1; fi
           for p in mwan3 luci-app-mwan3 watchcat luci-app-watchcat nlbwmon luci-app-nlbwmon; do
