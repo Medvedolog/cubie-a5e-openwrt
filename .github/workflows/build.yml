@@ -65,6 +65,8 @@ env:
 
 jobs:
   build:
+    # Feature staging: skip partial work until the complete APK/IB flow is committed.
+    if: false
     runs-on: ${{ inputs.runner == 'self-hosted' && fromJSON('["self-hosted","Linux","X64"]') || 'ubuntu-24.04' }}
     timeout-minutes: 350
     steps:
