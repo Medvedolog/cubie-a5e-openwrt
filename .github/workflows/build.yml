@@ -136,8 +136,18 @@ jobs:
           # Validate both POSIX/ash scripts before embedding them in the firmware.
           sh -n files/lib/aic8800.sh
           sh -n files/usr/sbin/aic8800-recover
-          # GitHub Contents API stores new scripts as 0644; set executable bit in image.
+          sh -n files/etc/uci-defaults/99-cubie-a5e-test-config
+          # Fail early if the known-good SDIO fixes were lost in this rebase.
+          for p in 090-sdio-respect-mmc-clock.patch 100-sdio-rx-fortify-radiotap.patch; do
+            test -s "package/kernel/aic8800/patches/$p" || {
+              echo "::error::Missing required AIC8800 patch $p"
+              exit 1
+            }
+          done
+          # GitHub Contents API stores scripts as 0644; overlay scripts
+          # must be executable or uci-defaults silently skips them.
           chmod 0755 files/usr/sbin/aic8800-recover
+          chmod 0755 files/etc/uci-defaults/99-cubie-a5e-test-config
           # Show test users exactly where the driver and OpenWrt package came from.
           # Derived from the Makefile in this build, not from a stale README.
           {
