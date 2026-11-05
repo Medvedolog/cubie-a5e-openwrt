@@ -81,6 +81,29 @@ ib_root=$(find "${scratch}" -mindepth 1 -maxdepth 1 -type d \
 printf '%s/packages.adb\n' "${feed_url}" > "${ib_root}/repositories"
 mkdir -p "${ib_root}/keys"
 cp public-key.pem "${ib_root}/keys/public-key.pem"
+printf '%s/packages.adb\n' "${feed_url}" > "${ib_root}/a5e-distfeeds.list"
+
+# The IB's remote repositories file controls package downloads, but does
+# NOT by itself replace /etc/apk/repositories.d/distfeeds.list in images
+# created by ImageBuilder. Install the same pinned feed and public key in
+# EVERY generated image, even if users pass their own FILES= overlay.
+python3 - "${ib_root}/Makefile" <<'PY'
+import pathlib
+import sys
+p = pathlib.Path(sys.argv[1])
+source = p.read_text()
+needle = "\t$(call prepare_rootfs,$(TARGET_DIR),$(USER_FILES),$(DISABLED_SERVICES))"
+if source.count(needle) != 1:
+    raise SystemExit("ImageBuilder prepare_rootfs recipe changed upstream")
+extra = (
+    "\n\t$(INSTALL_DIR) $(TARGET_DIR)/etc/apk/repositories.d"
+    "\n\t$(CP) $(TOPDIR)/a5e-distfeeds.list $(TARGET_DIR)/etc/apk/repositories.d/distfeeds.list"
+    "\n\t$(INSTALL_DIR) $(TARGET_DIR)/etc/apk/keys"
+    "\n\t$(CP) $(TOPDIR)/keys/public-key.pem $(TARGET_DIR)/etc/apk/keys/public-key.pem"
+)
+p.write_text(source.replace(needle, needle + extra))
+PY
+grep -q 'a5e-distfeeds.list' "${ib_root}/Makefile"
 cat > "${ib_root}/README-A5E-REPOSITORY.txt" <<EOF
 Radxa Cubie A5E OpenWrt ImageBuilder
 Firmware commit: ${GITHUB_SHA}
@@ -92,6 +115,11 @@ ${feed_url}/packages.adb
 This ImageBuilder uses ONLY APKs from the matching immutable release,
 signed by public-key.pem in keys/. Do not mix with official OpenWrt
 snapshot kmods: the kernel ABI differs from the upstream build.
+
+The base ImageBuilder uses the universal U-Boot DRAM configuration.
+For boards requiring Micron-specific boot timings, use the tested
+DRAM-profile sdcard image from the matching firmware release; an
+unmodified ImageBuilder image may not boot on such hardware.
 
 Example: make image PROFILE=radxa_cubie-a5e PACKAGES="luci kmod-nvme"
 EOF
