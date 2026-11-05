@@ -151,9 +151,14 @@ def check_rootfs(ext4):
         "cubie-a5e-pkgs-"
     )
     source_sha = os.environ.get("GITHUB_SHA", "")
-    if source_sha:
-        check(feedlines == [expected_feed_prefix + source_sha + "/packages.adb"],
-              "APK feed pinned to the exact firmware source commit " + source_sha[:12])
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if source_sha and run_id and attempt:
+        exact = (expected_feed_prefix + source_sha[:12] + "-" + run_id +
+                 "-" + attempt + "/packages.adb")
+        check(feedlines == [exact],
+              "APK feed pinned to exact build " + source_sha[:12] +
+              " / " + run_id + " / attempt " + attempt)
     else:
         check(len(feedlines) == 1 and
               feedlines[0].startswith(expected_feed_prefix) and
