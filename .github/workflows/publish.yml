@@ -62,6 +62,7 @@ jobs:
           {
             echo "id=$ID"; echo "branch=$BRANCH"; echo "sha=$SHA"
             echo "tag=$TAG"; echo "kind=$KIND"; echo "title=$TITLE"
+            echo "pkg_tag=cubie-a5e-pkgs-$SHA"
           } >> "$GITHUB_OUTPUT"
           echo "run $ID ($BRANCH ${SHA::7}) -> $TAG"
 
@@ -70,6 +71,46 @@ jobs:
           run-id: ${{ steps.run.outputs.id }}
           github-token: ${{ github.token }}
           path: art
+
+      - name: Publish immutable signed APK repository
+        run: |
+          set -euo pipefail
+          FEED=art/cubie-a5e-feed
+          if [ ! -s "$FEED/packages.adb" ]; then
+            echo "::warning::Legacy build without immutable APK feed; no package release"
+            exit 0
+          fi
+          test -s "$FEED/public-key.pem"
+          find "$FEED" -maxdepth 1 -name '*.apk' | grep -q .
+          PKG_TAG="${{ steps.run.outputs.pkg_tag }}"
+          SHA="${{ steps.run.outputs.sha }}"
+          find "$FEED" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort > /tmp/feed-want
+          if gh release view "$PKG_TAG" -R "$R" >/dev/null 2>&1; then
+            COMMIT=$(gh release view "$PKG_TAG" -R "$R" --json targetCommitish -q .targetCommitish)
+            test "$COMMIT" = "$SHA" || {
+              echo "::error::Immutable feed tag exists for a different commit"; exit 1; }
+            DRAFT=$(gh release view "$PKG_TAG" -R "$R" --json isDraft -q .isDraft)
+            if [ "$DRAFT" = false ]; then
+              gh release view "$PKG_TAG" -R "$R" --json assets -q '.assets[].name' |
+                LC_ALL=C sort > /tmp/feed-have
+              diff -u /tmp/feed-want /tmp/feed-have || {
+                echo "::error::Existing published feed is incomplete"; exit 1; }
+              echo "Immutable feed already complete: $PKG_TAG"
+              exit 0
+            fi
+          else
+            printf 'Complete build-specific signed APK index and packages.\nGit source commit: %s\nDo not use with firmware from another commit.\n' "$SHA" > /tmp/feed-notes.md
+            gh release create "$PKG_TAG" -R "$R" --draft --target "$SHA" \
+              --title "Cubie A5E signed APK feed ${SHA:0:12}" \
+              --notes-file /tmp/feed-notes.md
+          fi
+          # Draft stays hidden until ALL packages, index and key are present.
+          gh release upload "$PKG_TAG" -R "$R" "$FEED"/* --clobber
+          gh release view "$PKG_TAG" -R "$R" --json assets -q '.assets[].name' |
+            LC_ALL=C sort > /tmp/feed-have
+          diff -u /tmp/feed-want /tmp/feed-have
+          gh release edit "$PKG_TAG" -R "$R" --draft=false --prerelease
+          echo "Published complete signed repository: $PKG_TAG"
 
       - name: Assets and notes
         run: |
@@ -81,6 +122,15 @@ jobs:
           # the Wi-Fi driver and firmware, for "apk add" over the network
           find art/cubie-a5e-packages \( -name 'kmod-aic8800*.apk' -o -name 'aic8800-*firmware*.apk' \) \
             -exec cp {} up/ \;
+          # A5E ImageBuilder is built from the same PR kernel and pinned to
+          # its immutable APK feed, unlike the official OPiZ3 ImageBuilder.
+          if [ -d art/cubie-a5e-imagebuilder ]; then
+            cp art/cubie-a5e-imagebuilder/*.tar.zst up/
+            cp art/cubie-a5e-imagebuilder/SHA256SUMS up/imagebuilder.sha256sums
+          fi
+          if [ -f art/cubie-a5e-feed/public-key.pem ]; then
+            cp art/cubie-a5e-feed/public-key.pem up/cubie-a5e-apk-public-key.pem
+          fi
           ls -la up
           dup=$(ls up | sort | uniq -d)
           [ -z "$dup" ] || { echo "duplicate asset names: $dup"; exit 1; }
@@ -88,6 +138,16 @@ jobs:
           python3 scripts/release-notes.py --images up --dram-dir config/dram \
             --kind "${{ steps.run.outputs.kind }}" \
             --build-info art/cubie-a5e-image/build-info.txt --base-url "$BASE" > notes.md
+          if [ -s art/cubie-a5e-feed/packages.adb ]; then
+            {
+              printf '\n## Signed APK packages and ImageBuilder\n\n'
+              printf 'Immutable APK feed for exactly this image/kernel:\n'
+              printf '\`https://github.com/%s/releases/download/%s/packages.adb\`\n\n' \
+                "$R" "${{ steps.run.outputs.pkg_tag }}"
+              printf 'Firmware and ImageBuilder contain this pinned URL and matching public key.\n'
+              printf 'Only packages built in this exact run are present; do not mix official Snapshot kmods.\n'
+            } >> notes.md
+          fi
           if [ "${{ steps.run.outputs.kind }}" = test ] && [ -f docs/releases/test-build.md ]; then
             printf '\n' >> notes.md
             cat docs/releases/test-build.md >> notes.md
