@@ -146,6 +146,8 @@ jobs:
           sh -n files/lib/aic8800.sh
           sh -n files/usr/sbin/aic8800-recover
           sh -n files/etc/uci-defaults/99-cubie-a5e-test-config
+          bash -n ../scripts/prepare-release-bundles.sh
+          python3 -m py_compile ../scripts/check-image.py
           # Fail early if the known-good SDIO fixes were lost in this rebase.
           for p in 090-sdio-respect-mmc-clock.patch 100-sdio-rx-fortify-radiotap.patch; do
             test -s "package/kernel/aic8800/patches/$p" || {
@@ -377,6 +379,8 @@ jobs:
             cat openwrt/files/etc/aic8800-origin
             echo "openwrt: $OPENWRT_REPO ${{ steps.src.outputs.commit }}"
             cat feeds.revisions 2>/dev/null
+            echo "Immutable APK repository:"
+            cat feed/build-info.txt 2>/dev/null || true
             grep -H . openwrt/target/linux/generic/kernel-6.18 2>/dev/null
             echo "runner: ${{ inputs.runner || 'github' }} $(nproc) cpus"
           } > build-info.txt
