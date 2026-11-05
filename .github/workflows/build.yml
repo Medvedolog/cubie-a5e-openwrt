@@ -47,7 +47,7 @@ on:
 # cancelling it (only the newest waiting run is kept)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   OPENWRT_REPO: https://github.com/openwrt/openwrt.git
