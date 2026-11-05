@@ -146,11 +146,19 @@ def check_rootfs(ext4):
     distfeeds = cat("/etc/apk/repositories.d/distfeeds.list")
     feedlines = [line.strip() for line in distfeeds.splitlines()
                  if line.strip() and not line.lstrip().startswith("#")]
-    check(len(feedlines) == 1 and
-          feedlines[0].startswith(
-              "https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-") and
-          feedlines[0].endswith("/packages.adb"),
-          "one immutable GitHub APK feed, pinned to image commit")
+    expected_feed_prefix = (
+        "https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/"
+        "cubie-a5e-pkgs-"
+    )
+    source_sha = os.environ.get("GITHUB_SHA", "")
+    if source_sha:
+        check(feedlines == [expected_feed_prefix + source_sha + "/packages.adb"],
+              "APK feed pinned to the exact firmware source commit " + source_sha[:12])
+    else:
+        check(len(feedlines) == 1 and
+              feedlines[0].startswith(expected_feed_prefix) and
+              feedlines[0].endswith("/packages.adb"),
+              "one immutable GitHub APK feed")
     check(not any("downloads.openwrt.org" in line for line in feedlines),
           "no official Snapshot kmod feeds on custom kernel")
     rel = cat("/etc/openwrt_release")
