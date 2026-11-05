@@ -343,6 +343,22 @@ jobs:
           python3 ../scripts/check-image.py --out ../images --profile "$PROFILE" \
             --build-dir "build_dir/target-${ARCH_PACKAGES}_musl" | tee ../logs/check-image.txt
 
+      - name: Signed APK feed and matching ImageBuilder
+        working-directory: openwrt
+        run: |
+          set -euo pipefail
+          # The package index and IB must be from this SAME kernel build.
+          # Do not retrieve the official cortexa53 SDK/ImageBuilder.
+          make package/index
+          if ! find "bin/targets/$TARGET/$SUBTARGET" -maxdepth 1 \
+                -name '*imagebuilder*.tar.zst' -type f | grep -q .; then
+            make -j1 target/imagebuilder/compile V=s
+          fi
+          bash ../scripts/prepare-release-bundles.sh
+          test -s ../feed/packages.adb
+          test -s ../feed/public-key.pem
+          test -s ../imagebuilder/SHA256SUMS
+
       - name: Build info
         if: always()
         run: |
@@ -374,6 +390,18 @@ jobs:
           path: |
             images/
             build-info.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubie-a5e-feed
+          if-no-files-found: error
+          path: feed/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubie-a5e-imagebuilder
+          if-no-files-found: error
+          path: imagebuilder/
 
       - uses: actions/upload-artifact@v4
         with:
