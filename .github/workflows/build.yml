@@ -144,6 +144,7 @@ jobs:
           sh -n files/lib/aic8800.sh
           sh -n files/usr/sbin/aic8800-recover
           sh -n files/etc/uci-defaults/99-cubie-a5e-test-config
+          sh -n files/etc/uci-defaults/70-a5e-expand-ext4
           bash -n ../scripts/prepare-release-bundles.sh
           python3 -m py_compile ../scripts/check-image.py
           # Fail early if the known-good SDIO fixes were lost in this rebase.
@@ -157,6 +158,7 @@ jobs:
           # must be executable or uci-defaults silently skips them.
           chmod 0755 files/usr/sbin/aic8800-recover
           chmod 0755 files/etc/uci-defaults/99-cubie-a5e-test-config
+          chmod 0755 files/etc/uci-defaults/70-a5e-expand-ext4
           # Show test users exactly where the driver and OpenWrt package came from.
           # Derived from the Makefile in this build, not from a stale README.
           {
@@ -199,6 +201,7 @@ jobs:
           for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE CONFIG_CCACHE \
                    CONFIG_PACKAGE_kmod-aic8800-sdio CONFIG_PACKAGE_aic8800-sdio-firmware \
                    CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls CONFIG_IB \
+                   CONFIG_PACKAGE_parted CONFIG_PACKAGE_resize2fs \
                    CONFIG_PACKAGE_u-boot-radxa-cubie-a5e \
                    CONFIG_PACKAGE_trusted-firmware-a-sunxi-a523; do
             grep -qx "$c=y" .config || { echo "missing after defconfig: $c"; exit 1; }
