@@ -64,6 +64,9 @@ env:
 
 jobs:
   build:
+    # Superseded by claude/a5e-snapshot-fixed-20261105: this branch is
+    # missing tested AIC8800 SDIO 090/100 and must not publish firmware.
+    if: false
     runs-on: ${{ inputs.runner == 'self-hosted' && fromJSON('["self-hosted","Linux","X64"]') || 'ubuntu-24.04' }}
     timeout-minutes: 350
     steps:
