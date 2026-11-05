@@ -1,8 +1,8 @@
 #!/bin/sh
 # Cubie A5E lab first boot: configure only the onboard AIC8800 SDIO.
-# The MMC host index (mmc0/mmc1) changes between boots. OpenWrt's
-# default path=.../mmcN:390b:1 is not persistent. Match radio0 by
-# the physical device's MAC instead, so wifi config does not duplicate it.
+# Earlier DTS images could enumerate the SDIO controller as mmc0 or mmc1.
+# This image fixes host numbers with mmc aliases, but robust UCI identity
+# still uses the detected radio MAC (not a fragile sysfs/mmcN path).
 # Keep this script when Wi-Fi is not ready; boot's uci-defaults retries.
 
 uci -q get network.lan >/dev/null 2>&1 || exit 1
