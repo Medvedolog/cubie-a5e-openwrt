@@ -1,0 +1,28 @@
+From: Medvedolog <noreply@github.com>
+Subject: [PATCH] arm64: dts: allwinner: cubie-a5e: keep Wi-Fi BLDO1 enabled
+
+The AXP717 BLDO1 rail supplies 1.8 V SDIO I/O to the AIC8800D80.
+Keep it enabled regardless of regulator consumer transitions. The
+existing mmc1 vqmmc-supply reference remains unchanged.
+
+Ported from Armbian:
+patch/kernel/archive/sunxi-6.18/patches.backports/
+34-fix-wifi-regulator-cubie-a5e.patch
+Original author: Juan Sanchez Fuentes <juanesf91@gmail.com>
+
+This is a hardware experiment; it does not establish that the SDIO
+firmware -110 timeouts are due to regulator shutdown.
+
+---
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -263,6 +263,7 @@ reg_aldo4: aldo4 {
+			};
+
+			reg_bldo1: bldo1 {
++				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc-pg-iowifi";
+-- 
+2.47.0
