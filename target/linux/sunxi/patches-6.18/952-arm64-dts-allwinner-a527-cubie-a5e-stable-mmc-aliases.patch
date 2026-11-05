@@ -1,0 +1,26 @@
+From: Medvedolog <noreply@github.com>
+Subject: [PATCH] arm64: dts: allwinner: cubie-a5e: use stable MMC host aliases
+
+Linux assigns MMC host numbers by probe order unless the board DTS
+reserves them with of_alias_get_id(). Pin the removable microSD to
+mmc0 and the onboard AIC8800D80 SDIO module to mmc1, preventing
+path=/.../mmcN:390b:1 from changing across boots.
+
+Ported from akorshun/openwrt, patch 515, with only the MMC aliases
+and without duplicating PR #23296 patch 701 or local Wi-Fi patches.
+Still match Wi-Fi radios by stable MAC when reconciling UCI.
+
+---
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -16,6 +16,8 @@
+ 	aliases {
+ 		ethernet0 = &gmac0;
+ 		ethernet1 = &gmac1;
+ 		ethernet2 = &sdio_wifi;
++		mmc0 = &mmc0;
++		mmc1 = &mmc1;
+ 		serial0 = &uart0;
+ 	};
+-- 
+2.47.0
