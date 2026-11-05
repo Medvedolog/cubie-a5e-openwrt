@@ -19,7 +19,7 @@ fails with `-110` on others. See [field evidence (RU)](AIC8800-SDIO-WIFI.ru.md),
 There is no official kernel with A527 support yet, so the official
 ImageBuilder/SDK cannot be used: the image is built from source.
 
-**Base: the branch of PR #23296**, pinned to `5035e7d51ae5`. The aim is to
+**Base: the branch of PR #23296**. The original hardware-tested baseline was pinned to `5035e7d51ae5`; the 2026-11-05 snapshot migration branch pins `51d14f75a682` (PR updated 2026-11-01). This is an **untested rebase**, not an official OpenWrt snapshot or a validated hardware release. The aim is to
 differ as little as possible from what is expected to become official
 OpenWrt: same subtarget (`cortexa55`, packages `aarch64_cortex-a55`),
 same profile, same kernel patches. When the PR is merged, the build moves
@@ -35,6 +35,7 @@ the git history.
 |---|---|---|
 | `patches/openwrt/0001` | `cortexa55/target.mk`: `FEATURES += pci pcie` | the PR builds the PCIe driver but does not declare the feature, so `kmod-nvme` cannot be selected |
 | `target/linux/sunxi/patches-6.18/950-*` | Wi-Fi power sequence on PM1, BLDO1 as vqmmc (below) | the PR's mmc1 node (patch 701) has neither |
+| `target/linux/sunxi/patches-6.18/951-*` | AXP717 BLDO1 `regulator-always-on` from Armbian patch 34 | experimental: keep the 1.8 V Wi-Fi SDIO I/O rail enabled; not a proven fix for `-110` |
 | `package/boot/uboot-sunxi/patches/420-*` | DRAM fallback parameters (below) | the PR's open blocker: 1 GB boards do not boot |
 | `package/kernel/aic8800` | ImmortalWrt's AIC8800 package | the PR has the Wi-Fi node but no driver |
 | `config/diffconfig` | image contents | |
@@ -80,6 +81,21 @@ Notes for the driver audit (step after the first boot):
   above. The vendor 150 MHz override was disabled; deeper wake-up / IO-pad
   investigations remain hypotheses. A manual reset/reinit tool is now present,
   but not hardware-validated.
+
+### Snapshot migration experiment (2026-11-05)
+
+The PR #23296 remains open. This experiment updates the pinned PR head from
+`5035e7d51ae5` to `51d14f75a682` **without changing** the U-Boot DRAM
+fallback/936 MHz universal profile, Micron 4 GB profile, 35 MHz SDIO cap, or
+AIC8800 source revision. It adds patch 951 only; Armbian's patch 22 power
+sequence is already implemented by PR patch 701 plus our patch 950.
+
+Patch 951 follows [Armbian's BLDO1 change](https://github.com/armbian/build/blob/main/patch/kernel/archive/sunxi-6.18/patches.backports/34-fix-wifi-regulator-cubie-a5e.patch).
+Keeping `vqmmc-supply = <&reg_bldo1>` alone may already hold the regulator
+on while MMC is active. `regulator-always-on` is therefore a controlled
+hypothesis to be checked using cold starts and regulator debugfs, not proof
+of a solution for SDIO firmware timeout `-110`. The image validator checks
+both the vqmmc reference and the resulting BLDO1 DT property.
 
 ## 3. Our own changes
 

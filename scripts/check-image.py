@@ -80,6 +80,11 @@ def check_dtb(dtb):
         check(status(node) == "okay", "%s %s: %s" % (what, node, status(node)))
     check(fdtget(dtb, "/soc/mmc@4021000", "mmc-pwrseq") is not None, "mmc1 has mmc-pwrseq")
     check(fdtget(dtb, "/soc/mmc@4021000", "vmmc-supply") is not None, "mmc1 has vmmc-supply")
+    check(fdtget(dtb, "/soc/mmc@4021000", "vqmmc-supply") is not None, "mmc1 has BLDO1 vqmmc-supply")
+    bldo1 = "/soc/i2c@7081400/pmic@34/regulators/bldo1"
+    check(fdtget(dtb, bldo1, "regulator-name") == "vcc-pg-iowifi", "BLDO1 is vcc-pg-iowifi")
+    check(fdtget(dtb, bldo1, "regulator-always-on") is not None,
+          "BLDO1 regulator-always-on (Armbian Cubie A5E fix)")
     check(fdtget(dtb, "/wifi-pwrseq", "compatible") == "mmc-pwrseq-simple", "wifi-pwrseq node")
     # reset-gpios = <&r_pio 1 1 GPIO_ACTIVE_LOW>: bank M (1), pin 1, active low
     rg = (fdtget(dtb, "/wifi-pwrseq", "reset-gpios", "u") or "").split()

@@ -52,10 +52,10 @@ concurrency:
 env:
   OPENWRT_REPO: https://github.com/openwrt/openwrt.git
   # openwrt/openwrt#23296 "sunxi: add support for A527/T527 boards"
-  # (Zoltan Herpai), head of 2026-09-27 "sunxi: add support for Avaota A1",
-  # on main of 2026-09-25: Linux 6.18.52, U-Boot 2026.04, TF-A 2.14
+  # (Zoltan Herpai), updated 2026-11-01; experimental rebase on current
+  # PR head. Keep this SHA pinned for reproducible builds.
   OPENWRT_PR: 23296
-  OPENWRT_COMMIT: 5035e7d51ae54590309cbcf36e638c783e7a0557
+  OPENWRT_COMMIT: 51d14f75a68267f3ffff857848734cdf6b50ac52
   TARGET: sunxi
   SUBTARGET: cortexa55
   ARCH_PACKAGES: aarch64_cortex-a55
