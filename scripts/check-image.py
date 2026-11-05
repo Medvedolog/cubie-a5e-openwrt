@@ -141,6 +141,18 @@ def check_rootfs(ext4):
           "wireless.default_radio0.encryption='none'" in startup and
           "wireless.radio0.country='PA'" in startup,
           "first-boot Cubie A5E lab Wi-Fi configuration")
+    # This out-of-tree PR kernel MUST never take kmods from official Snapshot.
+    # The immutable feed tag is built from the same source commit as the image.
+    distfeeds = cat("/etc/apk/repositories.d/distfeeds.list")
+    feedlines = [line.strip() for line in distfeeds.splitlines()
+                 if line.strip() and not line.lstrip().startswith("#")]
+    check(len(feedlines) == 1 and
+          feedlines[0].startswith(
+              "https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-") and
+          feedlines[0].endswith("/packages.adb"),
+          "one immutable GitHub APK feed, pinned to image commit")
+    check(not any("downloads.openwrt.org" in line for line in feedlines),
+          "no official Snapshot kmod feeds on custom kernel")
     rel = cat("/etc/openwrt_release")
     print("  INFO    " + " ".join(l for l in rel.splitlines() if l.startswith(("DISTRIB_RELEASE", "DISTRIB_REVISION"))))
     for f in ls("/etc/apk/repositories.d"):
