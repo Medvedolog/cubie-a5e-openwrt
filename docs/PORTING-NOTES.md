@@ -19,7 +19,7 @@ fails with `-110` on others. See [field evidence (RU)](AIC8800-SDIO-WIFI.ru.md),
 There is no official kernel with A527 support yet, so the official
 ImageBuilder/SDK cannot be used: the image is built from source.
 
-**Base: the branch of PR #23296**, pinned to `5035e7d51ae5`. The aim is to
+**Base: the branch of PR #23296**. The hardware-tested baseline was pinned to `5035e7d51ae5`. The 2026-11-05 experimental migration branch pins `51d14f75a682` (PR updated 2026-11-01). It is **not yet validated on hardware** and is **not official OpenWrt snapshot**. The aim is to
 differ as little as possible from what is expected to become official
 OpenWrt: same subtarget (`cortexa55`, packages `aarch64_cortex-a55`),
 same profile, same kernel patches. When the PR is merged, the build moves
@@ -35,6 +35,8 @@ the git history.
 |---|---|---|
 | `patches/openwrt/0001` | `cortexa55/target.mk`: `FEATURES += pci pcie` | the PR builds the PCIe driver but does not declare the feature, so `kmod-nvme` cannot be selected |
 | `target/linux/sunxi/patches-6.18/950-*` | Wi-Fi power sequence on PM1, BLDO1 as vqmmc (below) | the PR's mmc1 node (patch 701) has neither |
+| `target/linux/sunxi/patches-6.18/951-*` | AXP717 BLDO1 `regulator-always-on` from Armbian patch 34 | keep 1.8 V SDIO I/O supplied, **not a proven fix** for `-110` |
+| `target/linux/sunxi/patches-6.18/952-*` | `mmc0/mmc1` device-tree aliases from Akorshun's A5E patch 515 | stable MMC host numbering for microSD and AIC8800; retain MAC-based UCI matching |
 | `package/boot/uboot-sunxi/patches/420-*` | DRAM fallback parameters (below) | the PR's open blocker: 1 GB boards do not boot |
 | `package/kernel/aic8800` | ImmortalWrt's AIC8800 package | the PR has the Wi-Fi node but no driver |
 | `config/diffconfig` | image contents | |
@@ -80,6 +82,26 @@ Notes for the driver audit (step after the first boot):
   above. The vendor 150 MHz override was disabled; deeper wake-up / IO-pad
   investigations remain hypotheses. A manual reset/reinit tool is now present,
   but not hardware-validated.
+
+### Snapshot migration and upstream A5E Wi-Fi integration (2026-11-05)
+
+The current experimental branch merges the **entire** `claude/fix-a5e-rootfs-sdio-uci`
+branch into the Nov 5 PR-head migration, preserving its improved DRAM-only
+image repacking, AIC8800 `090` (disable forced 150 MHz SDIO clock),
+`100` (FORTIFY radiotap), UCI first-boot MAC-based radio matching,
+manual recovery tools and package sources. The recovery package is not
+enabled in the default image config; no automatic recovery is introduced.
+
+The mainline PR patch 701 and local patch 950 provide power sequence and
+1.8 V `vqmmc` linkage. Patch 951 adds BLDO1 `regulator-always-on`,
+mirroring [Armbian patch 34](https://github.com/armbian/build/blob/main/patch/kernel/archive/sunxi-6.18/patches.backports/34-fix-wifi-regulator-cubie-a5e.patch).
+Patch 952 ports only Akorshun's `mmc0/mmc1` aliases from [his A5E DTS patch 515](https://github.com/akorshun/openwrt/blob/25.12.5-a523-cubie-a5e/target/linux/sunxi/patches-6.12/515-arm64-dts-allwinner-a527-radxa-a5e-enable-wifi.patch);
+the rest of 515 is already covered by PR 701 plus our 950/951.
+The FIT-DTB validator verifies both MMC aliases, power supplies, PM1
+power sequence and BLDO1. Fixed host numbering reduces unstable
+sysfs path identities; radio matching by MAC remains the fallback.
+This change does **not** prove any improvement in firmware upload
+timeouts (`-110`). Test on microSD with UART before deploying.
 
 ## 3. Our own changes
 
