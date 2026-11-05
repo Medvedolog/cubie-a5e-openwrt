@@ -38,7 +38,12 @@ cp "${package_dir}/packages.adb" "${out_feed}/packages.adb"
 cp public-key.pem "${out_feed}/public-key.pem"
 count=0
 for apk in "${package_dir}"/*.apk; do
-    [ -f "${apk}" ] || continue
+    # Detect broken merge links: the index may still reference these APKs.
+    [ -f "${apk}" ] || {
+        [ "${apk}" = "${package_dir}/*.apk" ] && break
+        echo "::error::Broken package symlink: ${apk}"
+        exit 1
+    }
     cp -L "${apk}" "${out_feed}/"
     count=$((count + 1))
 done
