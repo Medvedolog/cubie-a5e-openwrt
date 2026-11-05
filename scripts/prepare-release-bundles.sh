@@ -7,8 +7,13 @@ set -euo pipefail
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY must be owner/repository}"
 : "${TARGET:?TARGET must be the OpenWrt target}"
 : "${SUBTARGET:?SUBTARGET must be the OpenWrt subtarget}"
+: "${GITHUB_RUN_ID:?GITHUB_RUN_ID must identify this particular build}"
+: "${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT must identify retries}"
 
-feed_tag="cubie-a5e-pkgs-${GITHUB_SHA}"
+# Include run and attempt: re-running one Git commit can use newer feeds
+# or a different workflow_dispatch OpenWrt commit/kernel ABI.
+feed_tag="cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+upstream_sha=$(git rev-parse HEAD)
 feed_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${feed_tag}"
 package_dir="staging_dir/packages/${TARGET}"
 out_feed="../feed"
@@ -53,7 +58,7 @@ test -s "${out_feed}/index.json"
 sha256sum "${out_feed}"/*.apk "${out_feed}/packages.adb" \
     "${out_feed}/public-key.pem" | sed "s@  ${out_feed}/@  @" > "${out_feed}/SHA256SUMS"
 printf 'commit=%s\nupstream=%s\nfeed=%s/packages.adb\npackages=%s\n' \
-    "${GITHUB_SHA}" "${OPENWRT_COMMIT:-unknown}" "${feed_url}" "${count}" \
+    "${GITHUB_SHA}" "${upstream_sha}" "${feed_url}" "${count}" \
     > "${out_feed}/build-info.txt"
 echo "Prepared ${count} APKs, exact build key and signed packages.adb"
 
@@ -125,7 +130,7 @@ grep -q 'a5e-distfeeds.list' "${ib_root}/Makefile"
 cat > "${ib_root}/README-A5E-REPOSITORY.txt" <<EOF
 Radxa Cubie A5E OpenWrt ImageBuilder
 Firmware commit: ${GITHUB_SHA}
-OpenWrt source: ${OPENWRT_COMMIT:-unknown}
+OpenWrt source: ${upstream_sha}
 Target: ${TARGET}/${SUBTARGET}
 Build-specific APK repository:
 ${feed_url}/packages.adb
