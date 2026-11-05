@@ -44,6 +44,8 @@ Consequence: **kmods from downloads.openwrt.org do not fit this kernel.**
 All kmods for it will be published, signed, in this project's own apk
 repository (planned, see below).
 
+**New ext4 auto-grow (new builds):** the actual mounted ext4 root partition on microSD is enlarged on first boot, with one automatic reboot if needed, then online `resize2fs`. The same guarded script handles NVMe only if `/` truly resides on NVMe. NVMe root boot is **not yet tested/supported**; NVMe disk detection alone is not boot support. Squashfs is untouched. [Details (Russian)](docs/EXT4-AUTO-GROW.ru.md).
+
 ## Status
 
 | Function | Status |
