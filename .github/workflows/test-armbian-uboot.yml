@@ -1,0 +1,181 @@
+name: TEST Cubie A5E V1.1 Armbian U-Boot hybrid
+
+# Explicitly isolated experiment: only this test branch triggers it.
+# Uses previously verified OpenWrt kernel/rootfs; replaces only SPL/U-Boot
+# in an SD image. It never flashes hardware or publishes a production release.
+on:
+  push:
+    branches:
+      - test/a5e-v1.1-armbian-uboot
+    paths:
+      - '.github/workflows/test-armbian-uboot.yml'
+      - 'scripts/armbian-uboot-hybrid.py'
+      - 'docs/ARMBIAN-UBOOT-TEST.ru.md'
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful OpenWrt build run supplying the original images
+        type: string
+        required: true
+        default: '42056025519'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: armbian-uboot-a5e-v1.1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  armbian-uboot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate hybrid script
+        run: python3 -m py_compile scripts/armbian-uboot-hybrid.py
+
+      - name: Free runner storage
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift
+          sudo docker image prune -a -f || true
+          df -h /
+
+      - name: Check source OpenWrt build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.source_run_id || '42056025519' }}
+        run: |
+          set -euo pipefail
+          case "$SOURCE_RUN" in
+            ''|*[!0-9]*) echo "::error::Invalid source run ID"; exit 1 ;;
+          esac
+          INFO=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN")
+          test "$(jq -r .conclusion <<<"$INFO")" = success || {
+            echo "::error::Source OpenWrt run not successful"; exit 1; }
+          test "$(jq -r .name <<<"$INFO")" = "Build image (OpenWrt from source)"
+          echo "SOURCE_RUN=$SOURCE_RUN" >> "$GITHUB_ENV"
+          jq -r '{id,head_sha,conclusion,head_branch}' <<<"$INFO"
+
+      - name: Download matching OpenWrt SD images
+        uses: actions/download-artifact@v4
+        with:
+          name: cubie-a5e-image
+          run-id: ${{ inputs.source_run_id || '42056025519' }}
+          github-token: ${{ github.token }}
+          path: original
+
+      - name: Select OpenWrt V1.1 Micron 4GB images
+        run: |
+          set -euo pipefail
+          ls -lah original/images/
+          mkdir -p selected
+          for fs in ext4 squashfs; do
+            src=$(find original/images -maxdepth 1 -type f \
+              -name "*dram-micron-4g-m6-${fs}-sdcard.img.gz" -print -quit)
+            test -s "$src" || { echo "::error::Missing Micron M6 $fs image"; exit 1; }
+            cp "$src" selected/
+          done
+          cp original/images/*-dram-micron-4g-m6.txt selected/ 2>/dev/null || true
+          echo "Micron M6 selected; Armbian bootloader DRAM parameters may differ."
+
+      - name: Fetch Armbian source (record exact revision)
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/armbian/build.git armbian
+          git -C armbian rev-parse HEAD | tee armbian-framework-sha.txt
+          grep -F 'BOOTCONFIG="radxa-cubie-a5e_defconfig"' \
+            armbian/config/boards/radxa-cubie-a5e.csc
+          grep -F 'declare -g BOOTBRANCH=' \
+            armbian/config/sources/families/include/sunxi64_common.inc
+
+      - name: Build actual Armbian U-Boot for Cubie A5E
+        working-directory: armbian
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          # Official Armbian command. The framework can run in Docker
+          # on Ubuntu; no Armbian rootfs/kernel image is built.
+          ./compile.sh uboot BOARD=radxa-cubie-a5e BRANCH=current RELEASE=trixie \
+            KERNEL_CONFIGURE=no
+
+      - name: Extract U-Boot image from Armbian deb
+        run: |
+          set -euo pipefail
+          mkdir -p armbian-uboot-deb armbian-boot-tree
+          find armbian/output/debs -type f -name '*u-boot*radxa*cubie*a5e*.deb' \
+            -print -exec cp {} armbian-uboot-deb/ \;
+          deb=$(find armbian-uboot-deb -maxdepth 1 -type f -name '*.deb' -print -quit)
+          test -s "$deb" || {
+            find armbian/output/debs -type f | head -50
+            echo "::error::Armbian did not produce a Cubie A5E U-Boot .deb"; exit 1;
+          }
+          dpkg-deb -x "$deb" armbian-boot-tree
+          find armbian-boot-tree -type f | sort
+          src=$(find armbian-boot-tree -type f -name 'u-boot-sunxi-with-spl.bin' \
+            -print -quit)
+          test -s "$src" || {
+            echo "::error::Armbian U-Boot package has no eGON SPL image"; exit 1;
+          }
+          cp "$src" armbian-u-boot-sunxi-with-spl.bin
+          python3 - <<'PY'
+          from pathlib import Path
+          b=Path("armbian-u-boot-sunxi-with-spl.bin").read_bytes()
+          assert b[4:12] == b"eGON.BT0", "Invalid Allwinner eGON header"
+          assert 65536 < len(b) < (1024*1024-8192), "Unexpected SPL/U-Boot length"
+          print("Validated eGON payload:",len(b),"bytes")
+          PY
+
+      - name: Generate isolated OpenWrt + Armbian U-Boot test images
+        run: |
+          set -euo pipefail
+          mkdir -p hybrid
+          cp armbian-u-boot-sunxi-with-spl.bin hybrid/
+          cp armbian-uboot-deb/*.deb hybrid/
+          cp armbian-framework-sha.txt hybrid/
+          for src in selected/*-sdcard.img.gz; do
+            base=$(basename "$src")
+            dest="hybrid/${base/-dram-micron-4g-m6-/-dram-armbian-v1.1-4g-test-}"
+            python3 scripts/armbian-uboot-hybrid.py \
+              --uboot armbian-u-boot-sunxi-with-spl.bin \
+              --input "$src" --output "$dest"
+          done
+          cat > hybrid/README-TEST.txt <<'EOF'
+          EXPERIMENTAL. Cubie A5E V1.1 4GB only.
+          Bootloader: Armbian U-Boot / SPL, taken from the generated Armbian deb.
+          Kernel, device tree, userspace, filesystem and partition layout: OpenWrt
+          from GitHub Actions run 42056025519.
+          Armbian DRAM initialization may NOT match the original Micron M6 profile.
+          Armbian U-Boot may NOT boot the OpenWrt FIT/boot layout without adaptation.
+          Do NOT flash to eMMC/SPI. Use a spare microSD and capture UART output.
+          EOF
+          {
+            echo "source_openwrt_run=$SOURCE_RUN"
+            echo "armbian_framework_sha=$(cat armbian-framework-sha.txt)"
+            echo "test_branch=$GITHUB_REF_NAME"
+            echo "test_commit=$GITHUB_SHA"
+          } > hybrid/PROVENANCE.txt
+          (cd hybrid && sha256sum *.img.gz *.bin *.deb > SHA256SUMS)
+          ls -lh hybrid/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a5e-v1.1-armbian-uboot-hybrid-EXPERIMENTAL
+          path: hybrid/
+          if-no-files-found: error
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a5e-armbian-uboot-build-logs
+          path: |
+            armbian/output/logs/
+            armbian-framework-sha.txt
+          if-no-files-found: ignore
+          retention-days: 14
