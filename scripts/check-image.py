@@ -184,7 +184,7 @@ def check_image(img_gz, tmp):
     check(digests == baseline,
           "%s profile shares identical boot (FIT) and rootfs partitions" % fs)
     check(16 <= boot["size"] * 512 >> 20 <= 64, "boot partition 16..64 MiB")
-    check(100 <= root["size"] * 512 >> 20 <= 1024, "rootfs partition 100..1024 MiB (no 10 GB partitions)")
+    check(100 <= root["size"] * 512 >> 20 <= 3072, "rootfs partition 100..3072 MiB (2 GiB profile, no 10 GB partitions)")
     with open(img, "rb") as f:
         head = f.read(boot["start"] * 512)
     check(b"U-Boot SPL 2026" in head, "U-Boot SPL at the start of the image")
