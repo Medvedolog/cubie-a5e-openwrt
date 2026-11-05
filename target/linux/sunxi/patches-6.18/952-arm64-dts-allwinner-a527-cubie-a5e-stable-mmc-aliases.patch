@@ -13,14 +13,10 @@ Still match Wi-Fi radios by stable MAC when reconciling UCI.
 ---
 --- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
 +++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
-@@ -16,6 +16,8 @@
- 	aliases {
- 		ethernet0 = &gmac0;
- 		ethernet1 = &gmac1;
+@@ -18,2 +18,4 @@
  		ethernet2 = &sdio_wifi;
 +		mmc0 = &mmc0;
 +		mmc1 = &mmc1;
  		serial0 = &uart0;
- 	};
 -- 
 2.47.0
