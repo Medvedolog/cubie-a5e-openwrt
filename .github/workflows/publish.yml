@@ -115,7 +115,7 @@ jobs:
 
       - name: Assets and notes
         run: |
-          ls -R art | head -50
+          find art -maxdepth 2 -type f | sed -n '1,50p'
           mkdir up
           cp art/cubie-a5e-image/images/*.img.gz art/cubie-a5e-image/images/sha256sums up/
           cp art/cubie-a5e-image/images/*.manifest up/ 2>/dev/null || true
