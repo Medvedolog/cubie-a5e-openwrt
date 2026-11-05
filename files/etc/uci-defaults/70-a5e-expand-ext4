@@ -1,0 +1,161 @@
+#!/bin/sh
+# Cubie A5E: grow the mounted ext4 root partition and filesystem on first boot.
+# Intended for the two-partition MBR SD image; also works with an NVMe root
+# ONLY if / is genuinely mounted from that NVMe partition.
+#
+# Two-phase, retryable: after partition-table growth a reboot might be needed
+# for the kernel to see the new partition geometry. Returning 1 keeps this
+# uci-defaults script for the next boot. No automatic repeat reboots.
+#
+# Squashfs/overlay, non-root disks, GPT, other partitions: never modified.
+
+tag=a5e-root-grow
+log() {
+    logger -t "$tag" "$*" 2>/dev/null || :
+    echo "$tag: $*" >&2
+}
+
+# /proc/self/mountinfo provides the actual root's major:minor even if the
+# mount source is /dev/root, PARTUUID, or a device mapper alias.
+root_info=$(awk '$5 == "/" {
+    for (i = 1; i <= NF; i++)
+        if ($i == "-") { print $3, $(i+1); exit }
+}' /proc/self/mountinfo)
+set -- $root_info
+root_mm=${1:-}
+root_type=${2:-}
+
+# Read-only squashfs and overlay rootfs must keep the usual OpenWrt layout.
+[ "$root_type" = ext4 ] || {
+    log "root filesystem is ${root_type:-unknown}; no ext4 resize needed"
+    exit 0
+}
+case "$root_mm" in
+    [0-9]*:[0-9]*) ;;
+    *) log "cannot resolve root device major:minor"; exit 1 ;;
+esac
+
+sys_path=$(readlink -f "/sys/dev/block/$root_mm") || {
+    log "cannot resolve /sys/dev/block/$root_mm"
+    exit 1
+}
+part=${sys_path##*/}
+parent=${sys_path%/*}
+disk_name=${parent##*/}
+
+# AIC8800 is an MMC *SDIO* device, not a root block device. We accept
+# only an actual partition 2 of a local microSD/eMMC or NVMe disk.
+if ! printf '%s\n' "$part" | grep -Eq '^(mmcblk[0-9]+p2|nvme[0-9]+n[0-9]+p2)$'; then
+    log "unsupported ext4 root partition $part; leaving it untouched"
+    exit 0
+fi
+case "$part:$disk_name" in
+    mmcblk*p2:mmcblk*|nvme*n*p2:nvme*n*) ;;
+    *) log "partition $part has unexpected parent $disk_name"; exit 0 ;;
+esac
+[ -r "/sys/class/block/$part/partition" ] &&
+    [ "$(cat "/sys/class/block/$part/partition")" = 2 ] || {
+    log "$part is not partition 2"; exit 0
+}
+[ -b "/dev/$part" ] && [ -b "/dev/$disk_name" ] || {
+    log "required block device nodes are missing"; exit 1
+}
+command -v parted >/dev/null 2>&1 &&
+    command -v resize2fs >/dev/null 2>&1 || {
+    log "parted or resize2fs is missing; retry on next boot"
+    exit 1
+}
+
+disk="/dev/$disk_name"
+rootdev="/dev/$part"
+# Machine-readable sector geometry. Explicitly restrict this automatic
+# operation to the standard two-partition DOS image. Never touch GPT.
+table=$(parted -m -s "$disk" unit s print 2>/dev/null) || {
+    log "cannot read partition table on $disk"; exit 1
+}
+label=$(printf '%s\n' "$table" | awk -F: '$1 ~ /^\/dev\// { print $6; exit }')
+numbers=$(printf '%s\n' "$table" | awk -F: '$1 ~ /^[0-9]+$/ { printf "%s ", $1 }')
+if [ "$label" != msdos ] || [ "$numbers" != "1 2 " ]; then
+    log "unexpected partition layout ($label; $numbers); not resizing"
+    exit 0
+fi
+
+geometry=$(printf '%s\n' "$table" | awk -F: '
+    $1 ~ /^\/dev\// { disk=$2 }
+    $1 == "1" { boot_end=$3 }
+    $1 == "2" { start=$2; end=$3 }
+    END {
+        gsub(/s$/, "", disk); gsub(/s$/, "", boot_end);
+        gsub(/s$/, "", start); gsub(/s$/, "", end);
+        print disk, boot_end, start, end
+    }')
+set -- $geometry
+disk_sectors=${1:-}
+boot_end=${2:-}
+root_start=${3:-}
+root_end=${4:-}
+for n in "$disk_sectors" "$boot_end" "$root_start" "$root_end"; do
+    case "$n" in
+        ''|*[!0-9]*) log "invalid sector geometry"; exit 1 ;;
+    esac
+done
+if [ "$root_start" -le "$boot_end" ] ||
+   [ "$root_end" -lt "$root_start" ] ||
+   [ "$disk_sectors" -le "$root_end" ]; then
+    log "unsafe or inconsistent partition geometry; not resizing"
+    exit 0
+fi
+
+logical_bytes=$(cat "/sys/class/block/$disk_name/queue/logical_block_size") || exit 1
+case "$logical_bytes" in
+    512|1024|2048|4096) ;;
+    *) log "unsupported logical sector size $logical_bytes"; exit 0 ;;
+esac
+if [ $(( (disk_sectors - root_end - 1) * logical_bytes )) -ge 4194304 ]; then
+    log "growing root partition 2 on $disk (start $root_start sectors unchanged)"
+    # Parted changes only the *end* of partition 2. No filesystem changes
+    # until Linux recognizes the new partition size.
+    if ! parted -s -f "$disk" unit s resizepart 2 100%; then
+        log "partition resize failed; no automatic reboot"
+        exit 1
+    fi
+    sync
+    table=$(parted -m -s "$disk" unit s print 2>/dev/null) || exit 1
+    new_start=$(printf '%s\n' "$table" | awk -F: '$1=="2" {sub(/s$/, "", $2); print $2}')
+    root_end=$(printf '%s\n' "$table" | awk -F: '$1=="2" {sub(/s$/, "", $3); print $3}')
+    if [ "$new_start" != "$root_start" ]; then
+        log "CRITICAL: partition start changed unexpectedly; manual recovery required"
+        exit 1
+    fi
+fi
+
+case "$root_end" in ''|*[!0-9]*) log "invalid new root end"; exit 1 ;; esac
+on_disk_sectors=$(( (root_end - root_start + 1) * logical_bytes / 512 ))
+kernel_sectors=$(cat "/sys/class/block/$part/size") || exit 1
+case "$kernel_sectors" in
+    ''|*[!0-9]*) log "invalid kernel partition size"; exit 1 ;;
+esac
+
+if [ "$kernel_sectors" -lt "$on_disk_sectors" ]; then
+    marker=/etc/.a5e-root-grow-reboot-requested
+    if [ ! -e "$marker" ]; then
+        : > "$marker" || exit 1
+        sync
+        log "partition table enlarged, kernel still sees old size; one reboot scheduled"
+        # Continue the rest of OpenWrt first-boot setup before reboot.
+        ( sleep 15; /sbin/reboot ) </dev/null >/dev/null 2>&1 &
+    else
+        log "kernel still sees old size after reboot request; refusing reboot loop"
+    fi
+    exit 1
+fi
+
+# Linux ext4 supports online growth. Never run offline e2fsck on a mounted
+# root device. A normal second boot sees the new partition geometry here.
+if resize2fs "$rootdev" 2>&1 | logger -t "$tag"; then
+    rm -f /etc/.a5e-root-grow-reboot-requested
+    log "ext4 root growth completed on $rootdev"
+    exit 0
+fi
+log "resize2fs failed; retry on next boot"
+exit 1
