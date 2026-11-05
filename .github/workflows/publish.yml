@@ -142,7 +142,7 @@ jobs:
             {
               printf '\n## Signed APK packages and ImageBuilder\n\n'
               printf 'Immutable APK feed for exactly this image/kernel:\n'
-              printf '\`https://github.com/%s/releases/download/%s/packages.adb\`\n\n' \
+              printf '`https://github.com/%s/releases/download/%s/packages.adb`\n\n' \
                 "$R" "${{ steps.run.outputs.pkg_tag }}"
               printf 'Firmware and ImageBuilder contain this pinned URL and matching public key.\n'
               printf 'Only packages built in this exact run are present; do not mix official Snapshot kmods.\n'
