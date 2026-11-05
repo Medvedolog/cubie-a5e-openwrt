@@ -207,6 +207,15 @@ jobs:
             echo 'ImageBuilder must use the pinned GitHub APK feed (not duplicate all packages)'
             exit 1
           }
+          # Optional modules must remain available as packages, not silently
+          # disappear when upstream OpenWrt changes Kconfig dependencies.
+          for p in kmod-usb-net-qmi-wwan kmod-usb-net-cdc-mbim \
+                   kmod-usb-serial-option kmod-usb-acm; do
+            grep -Eq "^CONFIG_PACKAGE_${p}=[ym]$" .config || {
+              echo "::error::Optional modem package $p unavailable after defconfig"
+              exit 1
+            }
+          done
           if grep -qx 'CONFIG_AIC8800_SDIO_BT_SUPPORT=y' .config; then
             echo "AIC8800 Bluetooth must stay off"; exit 1; fi
           for p in mwan3 luci-app-mwan3 watchcat luci-app-watchcat nlbwmon luci-app-nlbwmon; do
