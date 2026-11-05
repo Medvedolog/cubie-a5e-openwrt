@@ -138,7 +138,7 @@ jobs:
           # Never use official Snapshot feeds on this out-of-tree kernel.
           # GitHub Releases serve a signed, immutable feed built with exactly
           # the same kernel ABI, for this Git source commit.
-          FEED_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/cubie-a5e-pkgs-${GITHUB_SHA}/packages.adb"
+          FEED_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/packages.adb"
           mkdir -p files/etc/apk/repositories.d
           printf '%s\n' "$FEED_URL" > files/etc/apk/repositories.d/distfeeds.list
           echo "Pinned firmware APK feed: $FEED_URL"
