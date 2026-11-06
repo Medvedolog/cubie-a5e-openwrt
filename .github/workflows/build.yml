@@ -134,8 +134,8 @@ jobs:
           if [ -n "$clash" ]; then echo "would overwrite: $clash"; exit 1; fi
           cp -a ../target ../package ../files .
           # Never use official Snapshot feeds on this out-of-tree kernel.
-          # GitHub Releases serve a signed, immutable feed built with exactly
-          # the same kernel ABI, for this Git source commit.
+          # The public apk-feed branch serves a signed, immutable repository
+          # built with exactly the same kernel ABI, for this build attempt.
           FEED_TAG="cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           FEED_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apk-feed/${FEED_TAG}/packages.adb"
           mkdir -p files/etc/apk/repositories.d
