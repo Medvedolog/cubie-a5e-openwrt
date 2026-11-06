@@ -116,6 +116,9 @@ def install_payload(sd_image, partition, payload):
         offset = partition["start"] * SECTOR
         length = partition["size"] * SECTOR
         copy_region(sd_image, offset, length, fs)
+        # OpenWrt mkfs image can contain benign uninitialised inode-bitmap
+        # padding. Fix it in this TEMPORARY extraction before copying back.
+        execute("e2fsck", "-fy", str(fs))
         execute("e2fsck", "-fn", str(fs))
         execute("debugfs", "-w", "-R", "mkdir /opt", str(fs))  # okay if exists
         execute("debugfs", "-w", "-R", "mkdir /opt/a5e-installer", str(fs))
@@ -126,6 +129,9 @@ def install_payload(sd_image, partition, payload):
             "SHA256SUMS",
         ):
             e2fs_write(fs, payload / filename, "/opt/a5e-installer/" + filename)
+        # OpenWrt mkfs image can contain benign uninitialised inode-bitmap
+        # padding. Fix it in this TEMPORARY extraction before copying back.
+        execute("e2fsck", "-fy", str(fs))
         execute("e2fsck", "-fn", str(fs))
         copy_back(fs, sd_image, offset)
 
