@@ -56,6 +56,9 @@ jobs:
           if [ "$BRANCH" = main ]; then
             TAG=cubie-a5e-snapshot-latest; KIND=latest
             TITLE="Cubie A5E OpenWrt snapshot ${SHA::7} (rolling)"
+          elif [ "$BRANCH" = claude/a5e-ssd-installer ]; then
+            TAG=cubie-a5e-nvme-installer-test; KIND=test
+            TITLE="Cubie A5E SSH SPI/NVMe installer test ${SHA::7}"
           else
             TAG=cubie-a5e-test; KIND=test
             TITLE="Test build ${SHA::7} ($BRANCH)"
@@ -74,6 +77,8 @@ jobs:
           path: art
 
       - name: Publish immutable signed APK repository
+        env:
+          SOURCE_BRANCH: ${{ steps.run.outputs.branch }}
         run: |
           set -euo pipefail
           FEED=art/cubie-a5e-feed
@@ -104,7 +109,12 @@ jobs:
                   raise SystemExit(f"missing indexed APK: {filename}")
               if path.stat().st_size != pkg["file-size"]:
                   raise SystemExit(f"size mismatch: {filename}")
-          for required in ("nvme-cli", "libnvme", "kmod-nvme", "kmod-aic8800-sdio"):
+          required_names = ["nvme-cli", "libnvme", "kmod-aic8800-sdio"]
+          # The NVMe-root test kernel builds the host driver directly into
+          # vmlinux. kmod-nvme cannot exist there by design.
+          if __import__("os").environ.get("SOURCE_BRANCH") != "claude/a5e-ssd-installer":
+              required_names.append("kmod-nvme")
+          for required in required_names:
               if not any(p["name"] == required for p in packages):
                   raise SystemExit(f"required package missing: {required}")
           apk_files = {p.name for p in root.glob("*.apk")}
@@ -154,6 +164,13 @@ jobs:
           find art -maxdepth 2 -type f | sed -n '1,50p'
           mkdir up
           cp art/cubie-a5e-image/images/*.img.gz art/cubie-a5e-image/images/sha256sums up/
+          if [ "${{ steps.run.outputs.branch }}" = claude/a5e-ssd-installer ]; then
+            test -s art/a5e-SPI-NVMe-offline-installer-EXPERIMENTAL/a5e-hybrid-microsd-installer.img.gz
+            cp art/a5e-SPI-NVMe-offline-installer-EXPERIMENTAL/a5e-hybrid-microsd-installer.img.gz up/
+            cp art/a5e-SPI-NVMe-offline-installer-EXPERIMENTAL/payload/a5e-nvme-openwrt.img.gz up/
+            cp art/a5e-SPI-NVMe-offline-installer-EXPERIMENTAL/payload/armbian-u-boot-sunxi-with-spl.bin up/
+            cp art/a5e-SPI-NVMe-offline-installer-EXPERIMENTAL/SHA256SUMS up/a5e-nvme-installer.SHA256SUMS
+          fi
           cp art/cubie-a5e-image/images/*.manifest up/ 2>/dev/null || true
           cp art/cubie-a5e-image/images/u-boot-dram-*.txt up/
           # the Wi-Fi driver and firmware, for "apk add" over the network
@@ -188,6 +205,17 @@ jobs:
           if [ "${{ steps.run.outputs.kind }}" = test ] && [ -f docs/releases/test-build.md ]; then
             printf '\n' >> notes.md
             cat docs/releases/test-build.md >> notes.md
+          fi
+          if [ "${{ steps.run.outputs.branch }}" = claude/a5e-ssd-installer ]; then
+            {
+              printf '\n## SSH-only offline SPI/NVMe installer (EXPERIMENTAL)\n\n'
+              printf 'Use the `a5e-hybrid-microsd-installer.img.gz` file on a spare microSD.\n'
+              printf 'After SD boot, connect by SSH and run `a5e-install-nvme --check`.\n'
+              printf 'Then `a5e-install-nvme --install /dev/nvme0n1 --flash-spi`.\n'
+              printf 'This erases the SSD, expands ext4 to full SSD size, backs up SPI NOR, and flashes Armbian U-Boot after a separate confirmation.\n'
+              printf 'Power off over SSH, remove microSD, cold-boot and reconnect over SSH.\n'
+              printf 'Hardware SPI→NVMe boot is untested; SPI recovery may require FEL.\n'
+            } >> notes.md
           fi
           cat notes.md
 
