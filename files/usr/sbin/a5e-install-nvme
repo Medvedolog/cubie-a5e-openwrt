@@ -88,6 +88,12 @@ case "$SSD" in *p[0-9]*) die "partition path prohibited" ;; esac
 [ -r "/sys/class/block/${SSD##*/}/size" ] || die "NVMe device not in sysfs"
 [ "$(cat "/sys/class/block/${SSD##*/}/size")" -gt 8388608 ] ||
     die "SSD smaller than 4 GiB"
+# The supplied OpenWrt image uses a 512-byte-sector MBR. Do not assume
+# it remains valid on an SSD exposed in 4K logical-sector mode.
+logical_size=$(cat "/sys/class/block/${SSD##*/}/queue/logical_block_size") ||
+    die "cannot determine NVMe logical sector size"
+[ "$logical_size" = 512 ] ||
+    die "installer disk image requires 512-byte logical sectors; found $logical_size"
 # Cross-check mountinfo major:minor, not textual paths (UUID/PARTUUID mounts
 # can conceal the underlying block-device name). Refuse mounted partitions.
 for block in /sys/class/block/${SSD##*/}*; do
