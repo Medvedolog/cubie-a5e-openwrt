@@ -146,6 +146,8 @@ jobs:
           sh -n files/usr/sbin/aic8800-recover
           sh -n files/etc/uci-defaults/99-cubie-a5e-test-config
           sh -n files/etc/uci-defaults/70-a5e-expand-ext4
+          sh -n files/usr/sbin/a5e-install-nvme
+          python3 -m py_compile ../scripts/make-a5e-nvme-installer.py
           bash -n ../scripts/prepare-release-bundles.sh
           python3 -m py_compile ../scripts/check-image.py
           # Fail early if the known-good SDIO fixes were lost in this rebase.
@@ -160,6 +162,7 @@ jobs:
           chmod 0755 files/usr/sbin/aic8800-recover
           chmod 0755 files/etc/uci-defaults/99-cubie-a5e-test-config
           chmod 0755 files/etc/uci-defaults/70-a5e-expand-ext4
+          chmod 0755 files/usr/sbin/a5e-install-nvme
           # Show test users exactly where the driver and OpenWrt package came from.
           # Derived from the Makefile in this build, not from a stale README.
           {
@@ -371,6 +374,40 @@ jobs:
           test -s ../feed/packages.adb
           test -s ../feed/public-key.pem
           test -s ../imagebuilder/SHA256SUMS
+
+      # A5E installation medium: a bootable SD with the complete NVMe OpenWrt
+      # ext4 disk image and SPI U-Boot payload embedded in its 2 GiB rootfs.
+      # Bootloader for SPI is written at offset ZERO; SD uses 8KiB.
+      # The installer does not run automatically, and always requires prompts.
+      - name: Package SPI to NVMe offline SD installer
+        if: github.ref_name == 'claude/a5e-ssd-installer'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p armbian-boot installer
+          gh run download 42092944575 --repo "$GITHUB_REPOSITORY" \
+            --name a5e-v1.1-armbian-uboot-hybrid-EXPERIMENTAL \
+            --dir armbian-boot
+          test -s armbian-boot/armbian-u-boot-sunxi-with-spl.bin
+          src=$(find images -maxdepth 1 -name '*dram-universal-ext4-sdcard.img.gz' -print -quit)
+          test -s "$src"
+          python3 scripts/make-a5e-nvme-installer.py \
+            --openwrt "$src" \
+            --uboot armbian-boot/armbian-u-boot-sunxi-with-spl.bin \
+            --out installer
+          (cd installer && sha256sum -c SHA256SUMS)
+          test -s installer/a5e-hybrid-microsd-installer.img.gz
+          test -s installer/payload/a5e-nvme-openwrt.img.gz
+          test -s installer/payload/armbian-u-boot-sunxi-with-spl.bin
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref_name == 'claude/a5e-ssd-installer'
+        with:
+          name: a5e-SPI-NVMe-offline-installer-EXPERIMENTAL
+          path: installer/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build info
         if: always()
