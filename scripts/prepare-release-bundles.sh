@@ -14,7 +14,7 @@ set -euo pipefail
 # or a different workflow_dispatch OpenWrt commit/kernel ABI.
 feed_tag="cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 upstream_sha=$(git rev-parse HEAD)
-feed_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${feed_tag}"
+feed_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apk-feed/${feed_tag}"
 package_dir="staging_dir/packages/${TARGET}"
 out_feed="../feed"
 out_ib="../imagebuilder"
