@@ -1,4 +1,4 @@
 commit=ce595c04010bea6f26375bb74d05e54b3905defb
 upstream=51d14f75a68267f3ffff857848734cdf6b50ac52
-feed=https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-ce595c04010b-42056025519-1/packages.adb
+feed=https://raw.githubusercontent.com/Medvedolog/cubie-a5e-openwrt/apk-feed/cubie-a5e-pkgs-ce595c04010b-42056025519-1/packages.adb
 packages=168
