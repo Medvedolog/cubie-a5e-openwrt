@@ -38,6 +38,9 @@ done
 [ "$(id -u)" = 0 ] || die "root required"
 [ -r /proc/device-tree/model ] || die "board model unavailable"
 grep -aq 'Radxa Cubie A5E' /proc/device-tree/model || die "refusing to run on another board"
+mem_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+[ "$mem_kib" -gt 3700000 ] && [ "$mem_kib" -lt 4300000 ] ||
+  die "test U-Boot payload is validated only for a 4 GiB A5E board"
 # The installer is the removable SD-booted ext4 OpenWrt, not the target SSD.
 grep -q ' / ext4 ' /proc/self/mountinfo || {
     awk '$5=="/"{for(i=1;i<=NF;i++)if($i=="-"){if($(i+1)=="ext4")exit 0;exit 1}}' /proc/self/mountinfo ||
@@ -85,9 +88,17 @@ case "$SSD" in *p[0-9]*) die "partition path prohibited" ;; esac
 [ -r "/sys/class/block/${SSD##*/}/size" ] || die "NVMe device not in sysfs"
 [ "$(cat "/sys/class/block/${SSD##*/}/size")" -gt 8388608 ] ||
     die "SSD smaller than 4 GiB"
-# Refuse if target SSD or any of its partitions is mounted.
-if awk -v d="$SSD" '$1==d || index($1, d "p")==1 {found=1} END{exit !found}' /proc/mounts; then
-    die "SSD/partition is mounted; unmount before installing"
+# Cross-check mountinfo major:minor, not textual paths (UUID/PARTUUID mounts
+# can conceal the underlying block-device name). Refuse mounted partitions.
+for block in /sys/class/block/${SSD##*/}*; do
+    [ -r "$block/dev" ] || continue
+    device_mm=$(cat "$block/dev")
+    if awk -v mm="$device_mm" '$3 == mm { found=1 } END { exit !found }' /proc/self/mountinfo; then
+        die "target SSD or one of its partitions is mounted ($block)"
+    fi
+done
+if grep -Eq "^$SSD(p[0-9]+)?[[:space:]]" /proc/swaps; then
+    die "target SSD is being used as swap"
 fi
 say "TARGET: $SSD — ALL EXISTING DATA WILL BE DESTROYED"
 printf "Type ERASE-%s to proceed: " "${SSD##*/}"
