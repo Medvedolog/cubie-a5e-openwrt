@@ -19,7 +19,7 @@ Usage:
 --install   DELETES ALL DATA ON THE SELECTED NVMe SSD.
 --flash-spi DANGEROUS: backs up the full 16MiB SPI NOR to microSD,
             then writes Armbian SPL/U-Boot at SPI offset 0.
-            Requires UART and FEL recovery capability.
+            Installs via SSH. FEL recovery may be required on SPI boot failure.
 The SD card is needed during installation; remove it only after poweroff.
 EOF
 }
@@ -117,6 +117,63 @@ case "$image_bytes" in ""|*[!0-9]*) die "invalid image length";; esac
 gzip -dc "$NVME_GZ" | cmp -n "$image_bytes" - "$SSD" || die "SSD readback mismatch"
 say "SSD image verified (FAT boot + ext4 root, PARTUUID preserved)"
 
+# Expand unmounted NVMe ext4 before modifying SPI NOR.
+say "Extending OpenWrt root ext4 to the entire SSD..."
+for u in parted partprobe resize2fs e2fsck; do
+    command -v "$u" >/dev/null 2>&1 || die "missing utility: $u"
+done
+pt=$(parted -m -s "$SSD" unit s print) || die "cannot read NVMe MBR"
+label=$(printf '%s\n' "$pt" | awk -F: '$1 ~ /^\/dev\// {print $6;exit}')
+nums=$(printf '%s\n' "$pt" | awk -F: '$1 ~ /^[0-9]+$/ {printf "%s ",$1}')
+[ "$label" = msdos ] && [ "$nums" = "1 2 " ] ||
+    die "unexpected partition layout; SPI unchanged"
+old_start=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$2);print $2}')
+old_end=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$3);print $3}')
+logical=$(cat "/sys/class/block/${SSD##*/}/queue/logical_block_size") ||
+    die "cannot read logical sector size"
+for n in "$old_start" "$old_end" "$logical"; do
+    case "$n" in ''|*[!0-9]*) die "invalid sector geometry";; esac
+done
+case "$logical" in 512|4096) ;; *) die "unsupported sector size";; esac
+[ "$old_end" -gt "$old_start" ] || die "invalid ext4 geometry"
+parted -s -f "$SSD" unit s resizepart 2 100% ||
+    die "partition resize failed; SPI unchanged"
+partprobe "$SSD" || :
+pt=$(parted -m -s "$SSD" unit s print) || die "cannot verify new geometry"
+new_start=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$2);print $2}')
+new_end=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$3);print $3}')
+[ "$new_start" = "$old_start" ] ||
+    die "CRITICAL: start sector changed; stop and inspect"
+case "$new_end" in ''|*[!0-9]*) die "invalid new end sector";; esac
+[ "$new_end" -ge "$old_end" ] || die "root partition was reduced"
+partition="${SSD##*/}p2"
+rootdev="/dev/$partition"
+expected=$(( (new_end - old_start + 1) * logical / 512 ))
+i=0
+while [ "$i" -lt 12 ]; do
+    if [ -r "/sys/class/block/$partition/size" ] &&
+       [ "$(cat "/sys/class/block/$partition/size")" -ge "$expected" ]; then
+        break
+    fi
+    partprobe "$SSD" >/dev/null 2>&1 || :
+    sleep 1
+    i=$((i + 1))
+done
+[ -b "$rootdev" ] &&
+[ -r "/sys/class/block/$partition/size" ] &&
+[ "$(cat "/sys/class/block/$partition/size")" -ge "$expected" ] ||
+    die "kernel has stale partition geometry; SPI unchanged"
+if e2fsck -f -y "$rootdev"; then
+    :
+else
+    rc=$?
+    [ "$rc" -eq 1 ] || die "ext4 consistency check failed ($rc)"
+fi
+resize2fs "$rootdev" || die "ext4 growth failed; SPI unchanged"
+sync
+say "NVMe root ext4 has been expanded to the full SSD capacity."
+parted -m -s "$SSD" unit s print
+
 if [ "$FLASH_SPI" -eq 1 ]; then
     backup="/root/cubie-a5e-spi-before-nvme-$(date +%Y%m%d-%H%M%S).bin"
     say "Backing up *full* SPI NOR to $backup on microSD"
@@ -125,7 +182,7 @@ if [ "$FLASH_SPI" -eq 1 ]; then
     sha256sum "$backup" > "$backup.sha256" || die "backup checksum failed"
     sync
     say "BACKUP: $backup; copy it to a computer before discarding microSD."
-    say "SPI flashing can require FEL + UART for recovery if power is lost."
+    say "SPI failures can require FEL recovery; UART is optional for installation."
     printf "Type FLASH-SPI-16M to overwrite the bootloader region: "
     IFS= read -r answer || die "no SPI confirmation"
     [ "$answer" = FLASH-SPI-16M ] || die "SPI flashing cancelled; SSD is ready"
@@ -136,5 +193,5 @@ if [ "$FLASH_SPI" -eq 1 ]; then
     [ "$expected" = "$actual" ] || die "SPI readback checksum differs; do not power-cycle"
     say "SPI bootloader verified. Full original flash saved at $backup."
 fi
-say "Installation complete. Power off, remove microSD, then boot with UART attached."
+say "Installation complete. Power off over SSH, remove microSD, power on and reconnect via SSH."
 say "If only SSD was installed, SPI remains unchanged; NVMe-only boot requires a compatible SPI bootloader."
