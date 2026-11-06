@@ -77,6 +77,7 @@ def check_dtb(dtb):
         "/soc/usb@4200400": "ohci1",
         "/soc/phy@4f00000": "PCIe/USB3 combo PHY",
         "/soc/pcie@4800000": "PCIe (M.2 NVMe)",
+        "/soc/spi@4025000": "SPI NOR controller (installer only)",
     }
     for node, what in nodes.items():
         check(status(node) == "okay", "%s %s: %s" % (what, node, status(node)))
@@ -91,6 +92,8 @@ def check_dtb(dtb):
           "MMC alias mmc0 points to microSD controller 4020000.mmc")
     check(fdtget(dtb, "/aliases", "mmc1") == "/soc/mmc@4021000",
           "MMC alias mmc1 points to onboard AIC8800 SDIO 4021000.mmc")
+    check("jedec,spi-nor" in (fdtget(dtb, "/soc/spi@4025000/flash@0", "compatible") or ""),
+          "onboard 16 MiB SPI NOR exposed for backed-up installer")
     check(fdtget(dtb, "/wifi-pwrseq", "compatible") == "mmc-pwrseq-simple", "wifi-pwrseq node")
     # reset-gpios = <&r_pio 1 1 GPIO_ACTIVE_LOW>: bank M (1), pin 1, active low
     rg = (fdtget(dtb, "/wifi-pwrseq", "reset-gpios", "u") or "").split()
@@ -133,6 +136,7 @@ def check_rootfs(ext4):
               "lmacfw_rf_8800d80_u02.bin", "aic_userconfig_8800d80.txt"):
         check(f in fw, "firmware aic8800/sdio/" + f)
     check(any(n.startswith("aic8800") for n in ls("/etc/modules.d")), "modules.d autoload entry for aic8800")
+    check("a5e-install-nvme" in ls("/usr/sbin"), "offline SD -> NVMe/SPI installer executable")
     check("wpad" in ls("/usr/sbin") or "hostapd" in ls("/usr/sbin"), "wpad / hostapd")
     keys = ls("/etc/apk/keys")
     check(len(keys) > 0, "apk keys: %s" % keys)
@@ -260,6 +264,10 @@ def check_kconfig(build_dir):
         "CONFIG_PINCTRL_SUN55I_A523_R": "y",
         "CONFIG_AW_INNO_COMBOPHY": "y",
         "CONFIG_PCIE_SUN55I_RC": "y",
+        "CONFIG_NVME_CORE": "y",
+        "CONFIG_BLK_DEV_NVME": "y",
+        "CONFIG_SPI_SUN6I": "y",
+        "CONFIG_MTD_SPI_NOR": "y",
         "CONFIG_USB_EHCI_HCD": "y",
         "CONFIG_USB_OHCI_HCD": "y",
     }
