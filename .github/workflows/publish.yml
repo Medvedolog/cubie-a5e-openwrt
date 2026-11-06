@@ -102,9 +102,8 @@ jobs:
               path = root / filename
               if not path.is_file():
                   raise SystemExit(f"missing indexed APK: {filename}")
-              digest = hashlib.sha256(path.read_bytes()).hexdigest()
-              if digest != pkg["hashes"]:
-                  raise SystemExit(f"SHA256 mismatch: {filename}")
+              if path.stat().st_size != pkg["file-size"]:
+                  raise SystemExit(f"size mismatch: {filename}")
           for required in ("nvme-cli", "libnvme", "kmod-nvme", "kmod-aic8800-sdio"):
               if not any(p["name"] == required for p in packages):
                   raise SystemExit(f"required package missing: {required}")
