@@ -1,0 +1,126 @@
+#!/bin/sh
+# Radxa Cubie A5E NVMe-only boot installer. Run from the experimental SD image.
+# Never runs on boot. SPI flashing is opt-in and requires exact confirmation.
+set -eu
+
+PAYLOAD=/opt/a5e-installer
+NVME_GZ="$PAYLOAD/a5e-nvme-openwrt.img.gz"
+SPI_BIN="$PAYLOAD/armbian-u-boot-sunxi-with-spl.bin"
+SPI_DEV=/dev/mtd0
+SSD=''
+FLASH_SPI=0
+CHECK=0
+usage() {
+    cat <<'EOF'
+Usage:
+  a5e-install-nvme --check
+  a5e-install-nvme --install /dev/nvme0n1 [--flash-spi]
+
+--install   DELETES ALL DATA ON THE SELECTED NVMe SSD.
+--flash-spi DANGEROUS: backs up the full 16MiB SPI NOR to microSD,
+            then writes Armbian SPL/U-Boot at SPI offset 0.
+            Requires UART and FEL recovery capability.
+The SD card is needed during installation; remove it only after poweroff.
+EOF
+}
+die() { echo "ERROR: $*" >&2; exit 1; }
+say() { echo "a5e-installer: $*"; }
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --check) CHECK=1 ;;
+        --install) [ "$#" -ge 2 ] || die "--install requires a block device"; SSD="$2"; shift ;;
+        --flash-spi) FLASH_SPI=1 ;;
+        --help|-h) usage; exit 0 ;;
+        *) usage >&2; die "unknown argument $1" ;;
+    esac
+    shift
+done
+[ "$(id -u)" = 0 ] || die "root required"
+[ -r /proc/device-tree/model ] || die "board model unavailable"
+grep -aq 'Radxa Cubie A5E' /proc/device-tree/model || die "refusing to run on another board"
+# The installer is the removable SD-booted ext4 OpenWrt, not the target SSD.
+grep -q ' / ext4 ' /proc/self/mountinfo || {
+    awk '$5=="/"{for(i=1;i<=NF;i++)if($i=="-"){if($(i+1)=="ext4")exit 0;exit 1}}' /proc/self/mountinfo ||
+      die "expected ext4 root filesystem"
+}
+root_mm=$(awk '$5=="/"{print $3;exit}' /proc/self/mountinfo)
+root_part=$(basename "$(readlink -f "/sys/dev/block/$root_mm")") || die "root block device not found"
+case "$root_part" in mmcblk*p2) ;; *) die "installer must be running from microSD partition 2; found $root_part";; esac
+
+[ -f "$NVME_GZ" ] && [ -f "$SPI_BIN" ] && [ -f "$PAYLOAD/SHA256SUMS" ] ||
+  die "embedded installer payload is missing; use the special installer SD image"
+(cd "$PAYLOAD" && sha256sum -c SHA256SUMS) || die "payload checksum mismatch"
+[ "$(dd if="$SPI_BIN" bs=1 skip=4 count=8 2>/dev/null)" = "eGON.BT0" ] ||
+  die "invalid Armbian U-Boot eGON image"
+command -v gzip >/dev/null && command -v dd >/dev/null || die "gzip and dd required"
+gzip -t "$NVME_GZ" || die "damaged SSD image"
+
+say "Board: $(tr -d '\000' < /proc/device-tree/model)"
+say "Running from: $root_part"
+say "U-Boot: $(wc -c < "$SPI_BIN") bytes; SPI offset = 0 (NOT SD offset 8 KiB)"
+say "Payload checksums: verified"
+
+if [ "$FLASH_SPI" -eq 1 ] || [ "$CHECK" -eq 1 ]; then
+    [ -c "$SPI_DEV" ] || die "$SPI_DEV missing; SPI NOR not exposed by kernel"
+    [ -r /sys/class/mtd/mtd0/size ] || die "MTD geometry unavailable"
+    [ "$(cat /sys/class/mtd/mtd0/size)" = 16777216 ] ||
+      die "SPI NOR is not exactly 16 MiB; refusing"
+    [ -r /sys/class/mtd/mtd0/type ] &&
+      grep -qx 'nor' /sys/class/mtd/mtd0/type || die "MTD is not NOR"
+    command -v flashcp >/dev/null || die "flashcp is unavailable"
+    say "SPI NOR: $(cat /sys/class/mtd/mtd0/name) (16 MiB)"
+fi
+
+if [ "$CHECK" -eq 1 ]; then
+    ls -l /dev/nvme*n* 2>/dev/null || :
+    say "Checks passed. No storage modified."
+    exit 0
+fi
+case "$SSD" in
+    /dev/nvme[0-9]*n[0-9]*) ;;
+    *) usage >&2; die "--install must name whole /dev/nvmeXnY, not a partition" ;;
+esac
+case "$SSD" in *p[0-9]*) die "partition path prohibited" ;; esac
+[ -b "$SSD" ] || die "$SSD is not a block device"
+[ -r "/sys/class/block/${SSD##*/}/size" ] || die "NVMe device not in sysfs"
+[ "$(cat "/sys/class/block/${SSD##*/}/size")" -gt 8388608 ] ||
+    die "SSD smaller than 4 GiB"
+# Refuse if target SSD or any of its partitions is mounted.
+if awk -v d="$SSD" '$1==d || index($1, d "p")==1 {found=1} END{exit !found}' /proc/mounts; then
+    die "SSD/partition is mounted; unmount before installing"
+fi
+say "TARGET: $SSD — ALL EXISTING DATA WILL BE DESTROYED"
+printf "Type ERASE-%s to proceed: " "${SSD##*/}"
+IFS= read -r answer || die "no confirmation"
+[ "$answer" = "ERASE-${SSD##*/}" ] || die "SSD installation cancelled"
+sync
+say "Writing SSD image..."
+gzip -dc "$NVME_GZ" | dd of="$SSD" bs=4M conv=fsync ||
+  die "SSD write failed; do not reboot without recovering image"
+sync
+say "Checking SSD image byte-for-byte against payload..."
+# Compare exactly the decompressed image length; trailing SSD sectors may differ.
+gzip -dc "$NVME_GZ" | cmp - "$SSD" || die "SSD readback mismatch"
+say "SSD image verified (FAT boot + ext4 root, PARTUUID preserved)"
+
+if [ "$FLASH_SPI" -eq 1 ]; then
+    backup="/root/cubie-a5e-spi-before-nvme-$(date +%Y%m%d-%H%M%S).bin"
+    say "Backing up *full* SPI NOR to $backup on microSD"
+    dd if="$SPI_DEV" of="$backup" bs=1M count=16 || die "SPI backup failed"
+    [ "$(wc -c < "$backup")" -eq 16777216 ] || die "SPI backup incomplete"
+    sha256sum "$backup" > "$backup.sha256" || die "backup checksum failed"
+    sync
+    say "BACKUP: $backup; copy it to a computer before discarding microSD."
+    say "SPI flashing can require FEL + UART for recovery if power is lost."
+    printf "Type FLASH-SPI-16M to overwrite the bootloader region: "
+    IFS= read -r answer || die "no SPI confirmation"
+    [ "$answer" = FLASH-SPI-16M ] || die "SPI flashing cancelled; SSD is ready"
+    flashcp -v "$SPI_BIN" "$SPI_DEV" || die "SPI flash write failed; use FEL/UART recovery"
+    expected=$(sha256sum "$SPI_BIN" | awk '{print $1}')
+    nbytes=$(wc -c < "$SPI_BIN")
+    actual=$(dd if="$SPI_DEV" bs=1M count=1 2>/dev/null | head -c "$nbytes" | sha256sum | awk '{print $1}')
+    [ "$expected" = "$actual" ] || die "SPI readback checksum differs; do not power-cycle"
+    say "SPI bootloader verified. Full original flash saved at $backup."
+fi
+say "Installation complete. Power off, remove microSD, then boot with UART attached."
+say "If only SSD was installed, SPI remains unchanged; NVMe-only boot requires a compatible SPI bootloader."
