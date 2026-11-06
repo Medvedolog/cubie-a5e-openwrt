@@ -121,9 +121,11 @@ jobs:
             echo "Verifying $patch"
             git apply --check "$patch"
           done
-          for patch in ../target/linux/sunxi/patches-6.18/*.patch; do
-            git apply --numstat "$patch" >/dev/null
-          done
+          # Existing kernel backports use quilt/patch formatting (some omit
+          # git-apply context prefixes), so git apply --numstat is invalid for
+          # the whole directory. Only check newly authored Git-style patch.
+          # Remaining kernel patches are validated by OpenWrt's patch phase.
+          git apply --numstat             ../target/linux/sunxi/patches-6.18/953-arm64-dts-a5e-spi-nor-installer.patch >/dev/null
 
       - name: Feeds
         working-directory: openwrt
