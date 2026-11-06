@@ -118,7 +118,10 @@ def install_payload(sd_image, partition, payload):
         copy_region(sd_image, offset, length, fs)
         # OpenWrt mkfs image can contain benign uninitialised inode-bitmap
         # padding. Fix it in this TEMPORARY extraction before copying back.
-        execute("e2fsck", "-fy", str(fs))
+        fsck = subprocess.run(["e2fsck", "-fy", str(fs)], check=False)
+        # e2fsck 1 means repairs were made; 0 means already clean.
+        if fsck.returncode not in (0, 1):
+            raise RuntimeError(f"e2fsck repair failed: exit {fsck.returncode}")
         execute("e2fsck", "-fn", str(fs))
         execute("debugfs", "-w", "-R", "mkdir /opt", str(fs))  # okay if exists
         execute("debugfs", "-w", "-R", "mkdir /opt/a5e-installer", str(fs))
@@ -131,7 +134,10 @@ def install_payload(sd_image, partition, payload):
             e2fs_write(fs, payload / filename, "/opt/a5e-installer/" + filename)
         # OpenWrt mkfs image can contain benign uninitialised inode-bitmap
         # padding. Fix it in this TEMPORARY extraction before copying back.
-        execute("e2fsck", "-fy", str(fs))
+        fsck = subprocess.run(["e2fsck", "-fy", str(fs)], check=False)
+        # e2fsck 1 means repairs were made; 0 means already clean.
+        if fsck.returncode not in (0, 1):
+            raise RuntimeError(f"e2fsck repair failed: exit {fsck.returncode}")
         execute("e2fsck", "-fn", str(fs))
         copy_back(fs, sd_image, offset)
 
