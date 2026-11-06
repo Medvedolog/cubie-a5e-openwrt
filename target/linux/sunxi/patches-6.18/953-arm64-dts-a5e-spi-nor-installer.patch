@@ -1,0 +1,25 @@
+From: Cubie A5E OpenWrt testers <noreply@github.com>
+Subject: [PATCH] arm64: dts: cubie-a5e: expose onboard SPI NOR for safe installer
+
+The PR already supplies the A523 SPI controller and PC pinmux. Enable
+the board's populated 16 MiB SPI NOR to permit an opt-in backed-up
+flashcp operation from a microSD-booted installer.
+
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -1,3 +1,16 @@
++&spi0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&spi0_pc_pins>, <&spi0_cs0_pc_pin>;
++	status = "okay";
++
++	flash@0 {
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <20000000>;
++	};
++};
++
+ &uart0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart0_pb_pins>;
