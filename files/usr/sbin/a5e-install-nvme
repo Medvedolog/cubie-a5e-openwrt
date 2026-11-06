@@ -47,7 +47,7 @@ root_mm=$(awk '$5=="/"{print $3;exit}' /proc/self/mountinfo)
 root_part=$(basename "$(readlink -f "/sys/dev/block/$root_mm")") || die "root block device not found"
 case "$root_part" in mmcblk*p2) ;; *) die "installer must be running from microSD partition 2; found $root_part";; esac
 
-[ -f "$NVME_GZ" ] && [ -f "$SPI_BIN" ] && [ -f "$PAYLOAD/SHA256SUMS" ] ||
+[ -f "$NVME_GZ" ] && [ -f "$SPI_BIN" ] && [ -f "$PAYLOAD/SHA256SUMS" ] && [ -f "$PAYLOAD/IMAGE_BYTES" ] ||
   die "embedded installer payload is missing; use the special installer SD image"
 (cd "$PAYLOAD" && sha256sum -c SHA256SUMS) || die "payload checksum mismatch"
 [ "$(dd if="$SPI_BIN" bs=1 skip=4 count=8 2>/dev/null)" = "eGON.BT0" ] ||
@@ -100,7 +100,10 @@ gzip -dc "$NVME_GZ" | dd of="$SSD" bs=4M conv=fsync ||
 sync
 say "Checking SSD image byte-for-byte against payload..."
 # Compare exactly the decompressed image length; trailing SSD sectors may differ.
-gzip -dc "$NVME_GZ" | cmp - "$SSD" || die "SSD readback mismatch"
+image_bytes=$(cat "$PAYLOAD/IMAGE_BYTES")
+case "$image_bytes" in ""|*[!0-9]*) die "invalid image length";; esac
+# OpenWrt BusyBox cmp supports -n to compare only the embedded image range.
+gzip -dc "$NVME_GZ" | cmp -n "$image_bytes" - "$SSD" || die "SSD readback mismatch"
 say "SSD image verified (FAT boot + ext4 root, PARTUUID preserved)"
 
 if [ "$FLASH_SPI" -eq 1 ]; then
