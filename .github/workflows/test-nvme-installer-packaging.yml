@@ -25,6 +25,10 @@ jobs:
           sudo apt-get install -y -qq fdisk mtools e2fsprogs u-boot-tools
           python3 -m py_compile scripts/make-a5e-nvme-installer.py
           sh -n files/usr/sbin/a5e-install-nvme
+      - name: Check patch hunk syntax
+        run: |
+          git apply --numstat patches/openwrt/0003-cubie-a5e-nvme-root-and-spi-builtins.patch
+          git apply --numstat target/linux/sunxi/patches-6.18/953-arm64-dts-a5e-spi-nor-installer.patch
       - uses: actions/download-artifact@v4
         with:
           name: cubie-a5e-image
