@@ -199,8 +199,7 @@ jobs:
           # unspecified breaks unattended Kconfig syncconfig during build.
           if [ "$GITHUB_REF_NAME" = 'claude/a5e-ssd-installer' ]; then
             cfg=target/linux/sunxi/cortexa55/config-6.18
-            for required in 'CONFIG_BLK_DEV_NVME=y' \\
-                            '# CONFIG_NVME_MULTIPATH is not set' \\
+            for required in 'CONFIG_BLK_DEV_NVME=y' '# CONFIG_NVME_MULTIPATH is not set' 
                             'CONFIG_MTD_SPI_NOR=y' 'CONFIG_SPI_SUN6I=y'; do
               grep -Fqx "$required" "$cfg" || {
                 echo "::error::Missing installer kernel setting: $required"
