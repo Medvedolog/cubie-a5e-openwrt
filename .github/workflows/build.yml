@@ -113,6 +113,18 @@ jobs:
           grep -H . openwrt/target/linux/generic/kernel-6.18
           grep -E '^KERNEL_PATCHVER' openwrt/target/linux/sunxi/Makefile
 
+      - name: Check patch integrity before feeds
+        working-directory: openwrt
+        run: |
+          set -euo pipefail
+          for patch in ../patches/openwrt/*.patch; do
+            echo "Verifying $patch"
+            git apply --check "$patch"
+          done
+          for patch in ../target/linux/sunxi/patches-6.18/*.patch; do
+            git apply --numstat "$patch" >/dev/null
+          done
+
       - name: Feeds
         working-directory: openwrt
         run: |
@@ -204,7 +216,7 @@ jobs:
           # what has to survive defconfig
           for c in CONFIG_TARGET_${TARGET}_${SUBTARGET}_DEVICE_$PROFILE CONFIG_CCACHE \
                    CONFIG_PACKAGE_kmod-aic8800-sdio CONFIG_PACKAGE_aic8800-sdio-firmware \
-                   CONFIG_PACKAGE_kmod-nvme CONFIG_PACKAGE_wpad-mbedtls CONFIG_IB \
+                   CONFIG_PACKAGE_block-mount CONFIG_PACKAGE_e2fsprogs CONFIG_PACKAGE_wpad-mbedtls CONFIG_IB \
                    CONFIG_PACKAGE_parted CONFIG_PACKAGE_resize2fs \
                    CONFIG_PACKAGE_u-boot-radxa-cubie-a5e \
                    CONFIG_PACKAGE_trusted-firmware-a-sunxi-a523; do
