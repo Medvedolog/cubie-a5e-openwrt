@@ -1,0 +1,103 @@
+name: Repair one immutable Cubie A5E APK feed
+
+on:
+  push:
+    branches:
+      - publish-feed-repair-420560
+    paths:
+      - feed-repair-run-id.txt
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      R: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve source build
+        id: source
+        run: |
+          set -euo pipefail
+          ID=$(cat feed-repair-run-id.txt)
+          case "$ID" in ''|*[!0-9]*) exit 1 ;; esac
+          read -r SHA CONCL ATTEMPT < <(gh api "repos/$R/actions/runs/$ID" \
+            -q '[.head_sha, .conclusion, .run_attempt] | @tsv')
+          test "$CONCL" = success
+          TAG="cubie-a5e-pkgs-${SHA:0:12}-$ID-$ATTEMPT"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Repairing $TAG from build $ID"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubie-a5e-feed
+          run-id: ${{ steps.source.outputs.id }}
+          github-token: ${{ github.token }}
+          path: feed
+
+      - name: Verify and publish exact APK filenames to raw GitHub
+        run: |
+          set -euo pipefail
+          test -s feed/packages.adb
+          test -s feed/public-key.pem
+          test -s feed/index.json
+          python3 - feed <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          packages = json.loads((root / "index.json").read_text()).get("packages", [])
+          if len(packages) < 100:
+              raise SystemExit(f"incomplete index: {len(packages)}")
+          expected = set()
+          for pkg in packages:
+              filename = f"{pkg['name']}-{pkg['version']}.apk"
+              expected.add(filename)
+              path = root / filename
+              if not path.is_file():
+                  raise SystemExit(f"missing {filename}")
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              if digest != pkg["hashes"]:
+                  raise SystemExit(f"checksum mismatch: {filename}")
+          if {p.name for p in root.glob("*.apk")} != expected:
+              raise SystemExit("APK file set differs from signed index")
+          for name in ("nvme-cli", "libnvme", "kmod-nvme", "kmod-aic8800-sdio"):
+              if not any(p["name"] == name for p in packages):
+                  raise SystemExit(f"missing required package {name}")
+          print(f"verified {len(packages)} APKs")
+          PY
+
+          TAG="${{ steps.source.outputs.tag }}"
+          TMP=$(mktemp -d)
+          trap 'rm -rf "$TMP"' EXIT
+          git -C "$TMP" init -q
+          git -C "$TMP" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${R}.git"
+          if git -C "$TMP" ls-remote --exit-code origin refs/heads/apk-feed >/dev/null 2>&1; then
+            git -C "$TMP" fetch -q --depth=1 origin refs/heads/apk-feed:refs/remotes/origin/apk-feed
+            git -C "$TMP" checkout -q -B apk-feed refs/remotes/origin/apk-feed
+          else
+            git -C "$TMP" checkout -q --orphan apk-feed
+          fi
+          mkdir -p "$TMP/$TAG"
+          if [ -n "$(find "$TMP/$TAG" -mindepth 1 -print -quit)" ]; then
+            diff -qr feed "$TMP/$TAG"
+          else
+            cp -a feed/. "$TMP/$TAG/"
+            git -C "$TMP" add "$TAG"
+            git -C "$TMP" -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Repair immutable Cubie A5E APK feed $TAG"
+            git -C "$TMP" push origin HEAD:refs/heads/apk-feed
+          fi
+          URL="https://raw.githubusercontent.com/$R/apk-feed/$TAG/packages.adb"
+          curl --retry 12 --retry-delay 5 --retry-all-errors -fsSL "$URL" -o "$TMP/packages.adb"
+          cmp feed/packages.adb "$TMP/packages.adb"
+          curl --retry 12 --retry-delay 5 --retry-all-errors -fsSI \
+            "https://raw.githubusercontent.com/$R/apk-feed/$TAG/nvme-cli-2.15-r1.apk"
+          echo "REPAIRED_FEED_URL=$URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published $URL"
