@@ -17,13 +17,14 @@
 1. Из `staging_dir/packages/sunxi/` копируются **все реально собранные
    APK**, исходный **подписанный** `packages.adb` и `public-key.pem`.
    Подпись не пересоздаётся ключом публикационного workflow.
-2. В GitHub Releases создаётся неизменяемый pre-release
-   `cubie-a5e-pkgs-<Git SHA12>-<GitHub run_id>-<attempt>`. Индекс и каждый APK-файл —
-   отдельные assets в корне релиза, поэтому APK может скачивать пакеты
-   непосредственно с GitHub (HTTP 302 обрабатывается клиентом).
+2. В отдельной ветке `apk-feed` создаётся неизменяемый каталог
+   `cubie-a5e-pkgs-<Git SHA12>-<GitHub run_id>-<attempt>/`. В нём лежат
+   исходные APK с неизменёнными именами, `packages.adb` и публичный ключ.
+   Адреса раздаются через `raw.githubusercontent.com`; GitHub Releases
+   не используется как файловый сервер пакетов, поскольку нормализует `~` в именах APK.
 3. В опубликованном образе `/etc/apk/repositories.d/distfeeds.list`
    заранее задан адрес:
-   `https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/cubie-a5e-pkgs-<SHA12>-<RUN_ID>-<ATTEMPT>/packages.adb`.
+   `https://raw.githubusercontent.com/Medvedolog/cubie-a5e-openwrt/apk-feed/cubie-a5e-pkgs-<SHA12>-<RUN_ID>-<ATTEMPT>/packages.adb`.
    Официальные Snapshot feeds исключены.
 4. ImageBuilder собирается **из того же самого** дерева OpenWrt и
    `.config`, с `CONFIG_IB=y`, `CONFIG_IB_STANDALONE` отключён.
@@ -93,7 +94,7 @@ SD-образы с соответствующими DRAM-профилями. А�
 
 - Это полный набор **собранных**, а не всех возможных OpenWrt APK.
 - `kmod` разных Git-коммитов/версий kernel ABI смешивать запрещено.
-- GitHub Releases и его CDN должны быть доступны с самого роутера.
+- `raw.githubusercontent.com` должен быть доступен с самого роутера.
 - Публикация завершается только после полной загрузки всех assets.
-  Неполный репозиторий остаётся в черновике (draft).
+  Неполный каталог не должен публиковаться: publisher проверяет полный набор файлов до push ветки.
 - Проверка реального `apk update && apk add` на A5E пока необходима.
