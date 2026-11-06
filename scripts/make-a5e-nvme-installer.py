@@ -147,8 +147,16 @@ def main():
             shutil.copyfileobj(fi, fo, 4 * 1024 * 1024)
         partitions = partition_info(original)
         root = partitions[1]
-        if original.stat().st_size != (root["start"] + root["size"]) * SECTOR:
-            raise RuntimeError("unexpected bytes after rootfs partition")
+        # OpenWrt SD images may carry a short fwtool metadata trailer AFTER
+        # the second partition. It is not part of the block-device image.
+        disk_end = (root["start"] + root["size"]) * SECTOR
+        source_size = original.stat().st_size
+        if source_size < disk_end or source_size > disk_end + 65536:
+            raise RuntimeError("unexpected size beyond MBR partitions")
+        if source_size > disk_end:
+            print(f"Discarding {source_size - disk_end} OpenWrt fwtool trailer bytes")
+            with original.open("r+b") as stream:
+                stream.truncate(disk_end)
         nvme_raw = work / "nvme.img"
         shutil.copyfile(original, nvme_raw)
         write_fat_bootscript(nvme_raw, partitions[0], work)
