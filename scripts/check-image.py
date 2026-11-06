@@ -137,6 +137,8 @@ def check_rootfs(ext4):
         check(f in fw, "firmware aic8800/sdio/" + f)
     check(any(n.startswith("aic8800") for n in ls("/etc/modules.d")), "modules.d autoload entry for aic8800")
     check("a5e-install-nvme" in ls("/usr/sbin"), "offline SD -> NVMe/SPI installer executable")
+    check("flashcp" in ls("/usr/sbin") or "flashcp" in ls("/sbin"),
+          "BusyBox flashcp available for SPI NOR installer")
     check("wpad" in ls("/usr/sbin") or "hostapd" in ls("/usr/sbin"), "wpad / hostapd")
     keys = ls("/etc/apk/keys")
     check(len(keys) > 0, "apk keys: %s" % keys)
