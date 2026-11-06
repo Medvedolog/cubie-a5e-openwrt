@@ -155,8 +155,8 @@ def check_rootfs(ext4):
     feedlines = [line.strip() for line in distfeeds.splitlines()
                  if line.strip() and not line.lstrip().startswith("#")]
     expected_feed_prefix = (
-        "https://github.com/Medvedolog/cubie-a5e-openwrt/releases/download/"
-        "cubie-a5e-pkgs-"
+        "https://raw.githubusercontent.com/Medvedolog/cubie-a5e-openwrt/"
+        "apk-feed/cubie-a5e-pkgs-"
     )
     source_sha = os.environ.get("GITHUB_SHA", "")
     run_id = os.environ.get("GITHUB_RUN_ID", "")
