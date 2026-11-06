@@ -1,0 +1,54 @@
+name: TEST A5E offline installer packaging (no hardware flash)
+
+on:
+  push:
+    branches: [claude/a5e-ssd-installer]
+    paths:
+      - scripts/make-a5e-nvme-installer.py
+      - files/usr/sbin/a5e-install-nvme
+      - .github/workflows/test-nvme-installer-packaging.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  smoke-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host filesystem tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fdisk mtools e2fsprogs u-boot-tools
+          python3 -m py_compile scripts/make-a5e-nvme-installer.py
+          sh -n files/usr/sbin/a5e-install-nvme
+      - uses: actions/download-artifact@v4
+        with:
+          name: cubie-a5e-image
+          run-id: 42056025519
+          github-token: ${{ github.token }}
+          path: original
+      - uses: actions/download-artifact@v4
+        with:
+          name: a5e-v1.1-armbian-uboot-hybrid-EXPERIMENTAL
+          run-id: 42092944575
+          github-token: ${{ github.token }}
+          path: armbian-boot
+      - name: Exercise complete offline installer image packaging
+        run: |
+          set -euo pipefail
+          src=$(find original/images -maxdepth 1 -name '*dram-universal-ext4-sdcard.img.gz' -print -quit)
+          test -s "$src"
+          python3 scripts/make-a5e-nvme-installer.py \
+            --openwrt "$src" \
+            --uboot armbian-boot/armbian-u-boot-sunxi-with-spl.bin \
+            --out smoke
+          (cd smoke && sha256sum -c SHA256SUMS)
+          grep -Eq '^[0-9]+$' smoke/payload/IMAGE_BYTES
+          test -s smoke/a5e-hybrid-microsd-installer.img.gz
+          test -s smoke/payload/a5e-nvme-openwrt.img.gz
+          du -sh smoke
+          echo "PASS packaging test (NOTE: prebuilt smoke source has modular NVMe and is NOT an autonomous NVMe-root firmware)"
