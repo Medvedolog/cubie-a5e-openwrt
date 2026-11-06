@@ -77,41 +77,78 @@ jobs:
         run: |
           set -euo pipefail
           FEED=art/cubie-a5e-feed
-          if [ ! -s "$FEED/packages.adb" ]; then
-            echo "::warning::Legacy build without immutable APK feed; no package release"
-            exit 0
-          fi
+          test -s "$FEED/packages.adb"
           test -s "$FEED/public-key.pem"
-          find "$FEED" -maxdepth 1 -name '*.apk' | grep -q .
+          test -s "$FEED/index.json"
           PKG_TAG="${{ steps.run.outputs.pkg_tag }}"
-          SHA="${{ steps.run.outputs.sha }}"
-          find "$FEED" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort > /tmp/feed-want
-          if gh release view "$PKG_TAG" -R "$R" >/dev/null 2>&1; then
-            COMMIT=$(gh release view "$PKG_TAG" -R "$R" --json targetCommitish -q .targetCommitish)
-            test "$COMMIT" = "$SHA" || {
-              echo "::error::Immutable feed tag exists for a different commit"; exit 1; }
-            DRAFT=$(gh release view "$PKG_TAG" -R "$R" --json isDraft -q .isDraft)
-            if [ "$DRAFT" = false ]; then
-              gh release view "$PKG_TAG" -R "$R" --json assets -q '.assets[].name' |
-                LC_ALL=C sort > /tmp/feed-have
-              diff -u /tmp/feed-want /tmp/feed-have || {
-                echo "::error::Existing published feed is incomplete"; exit 1; }
-              echo "Immutable feed already complete: $PKG_TAG"
-              exit 0
-            fi
+
+          # Verify every APK named by the signed index exists with its exact
+          # original filename and SHA-256. GitHub Release assets normalize '~'
+          # to '.', so they are NOT a valid APK repository transport.
+          python3 - "$FEED" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          index = json.loads((root / "index.json").read_text())
+          packages = index.get("packages", [])
+          if len(packages) < 100:
+              raise SystemExit(f"incomplete package index: {len(packages)} entries")
+          names = set()
+          for pkg in packages:
+              name, version = pkg["name"], pkg["version"]
+              filename = f"{name}-{version}.apk"
+              if filename in names:
+                  raise SystemExit(f"duplicate package filename: {filename}")
+              names.add(filename)
+              path = root / filename
+              if not path.is_file():
+                  raise SystemExit(f"missing indexed APK: {filename}")
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              if digest != pkg["hashes"]:
+                  raise SystemExit(f"SHA256 mismatch: {filename}")
+          for required in ("nvme-cli", "libnvme", "kmod-nvme", "kmod-aic8800-sdio"):
+              if not any(p["name"] == required for p in packages):
+                  raise SystemExit(f"required package missing: {required}")
+          apk_files = {p.name for p in root.glob("*.apk")}
+          if apk_files != names:
+              raise SystemExit(
+                  f"APK set differs from index: extra={sorted(apk_files-names)}, "
+                  f"missing={sorted(names-apk_files)}"
+              )
+          print(f"Verified {len(packages)} signed APK entries and original filenames")
+          PY
+
+          # Store each build in its own immutable directory on a dedicated
+          # public branch. raw.githubusercontent.com preserves '~' exactly,
+          # unlike the GitHub Releases upload endpoint.
+          TMP=$(mktemp -d)
+          trap 'rm -rf "$TMP"' EXIT
+          git -C "$TMP" init -q
+          git -C "$TMP" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${R}.git"
+          if git -C "$TMP" ls-remote --exit-code origin refs/heads/apk-feed >/dev/null 2>&1; then
+            git -C "$TMP" fetch -q --depth=1 origin refs/heads/apk-feed:refs/remotes/origin/apk-feed
+            git -C "$TMP" checkout -q -B apk-feed refs/remotes/origin/apk-feed
           else
-            printf 'Complete build-specific signed APK index and packages.\nGit source commit: %s\nDo not use with firmware from another commit.\n' "$SHA" > /tmp/feed-notes.md
-            gh release create "$PKG_TAG" -R "$R" --draft --target "$SHA" \
-              --title "Cubie A5E signed APK feed ${SHA:0:12}" \
-              --notes-file /tmp/feed-notes.md
+            git -C "$TMP" checkout -q --orphan apk-feed
           fi
-          # Draft stays hidden until ALL packages, index and key are present.
-          gh release upload "$PKG_TAG" -R "$R" "$FEED"/* --clobber
-          gh release view "$PKG_TAG" -R "$R" --json assets -q '.assets[].name' |
-            LC_ALL=C sort > /tmp/feed-have
-          diff -u /tmp/feed-want /tmp/feed-have
-          gh release edit "$PKG_TAG" -R "$R" --draft=false --prerelease
-          echo "Published complete signed repository: $PKG_TAG"
+          mkdir -p "$TMP/$PKG_TAG"
+          if [ -d "$TMP/$PKG_TAG" ] && [ -n "$(find "$TMP/$PKG_TAG" -mindepth 1 -print -quit)" ]; then
+            diff -qr "$FEED" "$TMP/$PKG_TAG" || {
+              echo "::error::Immutable feed path already exists with different contents"
+              exit 1
+            }
+            echo "Feed already published: $PKG_TAG"
+          else
+            cp -a "$FEED/." "$TMP/$PKG_TAG/"
+            git -C "$TMP" add "$PKG_TAG"
+            git -C "$TMP" -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Publish immutable Cubie A5E APK feed $PKG_TAG"
+            git -C "$TMP" push origin HEAD:refs/heads/apk-feed
+          fi
+          FEED_URL="https://raw.githubusercontent.com/$R/apk-feed/$PKG_TAG/packages.adb"
+          curl --retry 12 --retry-delay 5 --retry-all-errors -fsSL "$FEED_URL" -o "$TMP/packages.adb"
+          cmp "$FEED/packages.adb" "$TMP/packages.adb"
+          echo "Published exact signed APK feed: $FEED_URL"
 
       - name: Assets and notes
         run: |
@@ -143,7 +180,7 @@ jobs:
             {
               printf '\n## Signed APK packages and ImageBuilder\n\n'
               printf 'Immutable APK feed for exactly this image/kernel:\n'
-              printf '`https://github.com/%s/releases/download/%s/packages.adb`\n\n' \
+              printf '`https://raw.githubusercontent.com/%s/apk-feed/%s/packages.adb`\n\n' \
                 "$R" "${{ steps.run.outputs.pkg_tag }}"
               printf 'Firmware and ImageBuilder contain this pinned URL and matching public key.\n'
               printf 'Only packages built in this exact run are present; do not mix official Snapshot kmods.\n'
