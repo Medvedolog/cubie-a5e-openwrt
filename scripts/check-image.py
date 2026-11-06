@@ -124,8 +124,9 @@ def check_rootfs(ext4):
     kvers = ls("/lib/modules")
     check(len(kvers) == 1, "one kernel module directory: %s" % kvers)
     mods = ls("/lib/modules/" + kvers[0]) if kvers else []
-    for m in ("aic8800_bsp.ko", "aic8800_fdrv.ko", "nvme.ko", "nvme-core.ko"):
+    for m in ("aic8800_bsp.ko", "aic8800_fdrv.ko"):
         check(m in mods, "module " + m)
+    check(not any("nvme.ko" in m or "nvme-core.ko" in m for m in mods), "NVMe host compiled in, not loadable after root mount")
     check(not any("btlpm" in m or "aic_btusb" in m for m in mods), "no AIC8800 Bluetooth modules")
     fw = ls("/lib/firmware/aic8800/sdio")
     for f in ("fmacfw_8800d80_u02.bin", "fw_patch_8800d80_u02.bin",
@@ -284,7 +285,7 @@ def main():
     man = glob.glob(os.path.join(a.out, "*%s.manifest" % a.profile))
     if check(len(man) == 1, "manifest"):
         pkgs = dict(l.split(" - ", 1) for l in open(man[0]).read().splitlines() if " - " in l)
-        for p in ("kmod-aic8800-sdio", "aic8800-sdio-firmware", "kmod-nvme",
+        for p in ("kmod-aic8800-sdio", "aic8800-sdio-firmware", "block-mount",
                   "parted", "resize2fs", "wpad-mbedtls", "luci", "kernel"):
             check(p in pkgs, "manifest: %s %s" % (p, pkgs.get(p, "")))
         for p in ("mwan3", "luci-app-mwan3", "watchcat", "nlbwmon", "luci-app-nlbwmon",
