@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build from official pinned source; no flash or publication.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'rc=$?; printf "Build command failed (line %d, exit %d)\n" "$LINENO" "$rc" >&2; exit "$rc"' ERR
 
 upstream=f8145e65458fba52e360bbdb358be42939eb557f
 reference=r38527-f8145e6545
@@ -120,6 +121,23 @@ if grep -Fxq CONFIG_AIC8800_SDIO_BT_SUPPORT=y .config; then
   echo "refusing untested SDIO Bluetooth configuration" >&2
   exit 2
 fi
+# OpenWrt's source mirror has no vendor archive. Git/Zstd repacking is
+# not byte-identical to the package pin. Seed only the original archive.
+aic_tar='aic8800-2026.03.10~89f865b8.tar.zst'
+aic_sha='fb54d2ac13109cf49c1b981424f26e3cc595826f033392284f6b3835a162e069'
+grep -Fxq "PKG_MIRROR_HASH:=$aic_sha" package/kernel/aic8800/Makefile
+mkdir -p dl
+if ! printf '%s  %s\n' "$aic_sha" "dl/$aic_tar" | sha256sum --check --status -; then
+  (
+    aic_tmp=$(mktemp "dl/.aic8800.XXXXXX")
+    trap 'rm -f -- "$aic_tmp"' EXIT
+    curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+      --connect-timeout 15 --max-time 120 -o "$aic_tmp" "https://sources.immortalwrt.org/$aic_tar"
+    printf '%s  %s\n' "$aic_sha" "$aic_tmp" | sha256sum --check -
+    mv -f -- "$aic_tmp" "dl/$aic_tar"
+  )
+fi
+printf '%s  %s\n' "$aic_sha" "dl/$aic_tar" | sha256sum --check -
 make -j"$jobs" download V=s 2>&1 | tee "$logs/download.log"
 if ! make -j"$jobs" V=s >"$logs/build.log" 2>&1; then
   tail -n 100 "$logs/build.log" >&2
@@ -127,9 +145,22 @@ if ! make -j"$jobs" V=s >"$logs/build.log" 2>&1; then
 fi
 release="$src/bin/targets/sunxi/cortexa53"
 if [[ "$variant" == pwrseq-950 ]]; then
-  mapfile -t kernel_cfg < <(find "$src/build_dir" -path '*/linux-sunxi_cortexa53/linux-6.18*/.config')
-  [[ "${#kernel_cfg[@]}" == 1 ]]
-  grep -Fxq CONFIG_PWRSEQ_SIMPLE=y "${kernel_cfg[0]}"
+  # ImageBuilder includes a copy of the kernel .config within its staging
+  # tree. Do not recursively count that copy as a second kernel build.
+  shopt -s nullglob
+  kernel_cfg=("$src"/build_dir/target-*/linux-sunxi_cortexa53/linux-6.18*/.config)
+  shopt -u nullglob
+  if [[ "${#kernel_cfg[@]}" != 1 ]]; then
+    printf 'Expected one primary kernel config, found %d\n' "${#kernel_cfg[@]}" >&2
+    printf 'Candidate: %s\n' "${kernel_cfg[@]}" >&2
+    exit 2
+  fi
+  printf 'Checking primary kernel config %s\n' "${kernel_cfg[0]}"
+  grep -E '^((# )?CONFIG_(PWRSEQ_SIMPLE|RESET_GPIO))([= ]|$)' "${kernel_cfg[0]}" || true
+  grep -Fxq CONFIG_PWRSEQ_SIMPLE=y "${kernel_cfg[0]}" || {
+    echo 'Primary kernel does not have built-in MMC simple power sequencing' >&2
+    exit 2
+  }
   if grep -Eq '^CONFIG_RESET_GPIO=[ym]$' "${kernel_cfg[0]}"; then
     echo "RESET_GPIO is incompatible with this three-cell PM1 GPIO sequence" >&2
     exit 2
