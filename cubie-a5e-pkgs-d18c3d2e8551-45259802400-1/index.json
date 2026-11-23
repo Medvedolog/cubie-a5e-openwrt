@@ -1,0 +1,3252 @@
+{
+  "packages": [
+    {
+      "name": "aic8800-sdio-firmware",
+      "version": "2026.03.10~89f865b8-r6",
+      "hashes": "8bbf2304d9d3a690ff1e3e278a50c271894311f0c1821eb993836eb162990901",
+      "description": "Aicsemi aic8800 SDIO firmware",
+      "arch": "aarch64_cortex-a53",
+      "origin": "feeds/base/kernel/aic8800",
+      "installed-size": 5089762,
+      "file-size": 3342570,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "aic8800-sdio-firmware-any"
+      ],
+      "tags": [
+        "openwrt:section=firmware"
+      ]
+    }, {
+      "name": "apk-mbedtls",
+      "version": "3.0.5-r4",
+      "hashes": "18570838ba654552583deea8d6393be8f3ba6369cb526731b46eef436d1f60ba",
+      "description": "apk package manager (mbedtls)",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/system/apk",
+      "maintainer": "Paul Spooren <mail@aparcar.org>",
+      "url": "https://gitlab.alpinelinux.org/alpine/apk-tools.git",
+      "installed-size": 235823,
+      "file-size": 126498,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libmbedtls21",
+        "wget-any",
+        "zlib"
+      ],
+      "provides": [
+        "apk=3.0.5-r4",
+        "apk-mbedtls-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "base-files",
+      "version": "1~f8145e6",
+      "hashes": "592f6ba466dca68483bbeae879230c4e41deb9bf0b43dcd5f5d66be61eab031f",
+      "description": "This package contains a base filesystem and system scripts for OpenWrt.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/base-files",
+      "url": "https://openwrt.org/",
+      "installed-size": 181837,
+      "file-size": 61980,
+      "depends": [
+        "busybox",
+        "fstools",
+        "fwtool",
+        "jsonfilter",
+        "libc",
+        "netifd",
+        "openwrt-keyring",
+        "procd",
+        "procd-seccomp",
+        "ucode",
+        "ucode-mod-digest",
+        "ucode-mod-fs",
+        "usign"
+      ],
+      "provides": [
+        "base-files-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "busybox",
+      "version": "1.38.0-r5",
+      "hashes": "130ec684eab15ce1b812805651ba513a65b8bad8d9233ed27a9af6e735f5d22b",
+      "description": "The Swiss Army Knife of embedded Linux. It slices, it dices, it makes Julian Fries.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/busybox",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://busybox.net/",
+      "installed-size": 432815,
+      "file-size": 241189,
+      "provider-priority": 100,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "busybox-any"
+      ],
+      "tags": [
+        "openwrt:section=base",
+        "openwrt:cpe=cpe:/a:busybox:busybox"
+      ]
+    }, {
+      "name": "ca-bundle",
+      "version": "20260816-r2",
+      "hashes": "e415daace6abf5cff5dc4ddcd21aeb15b516c5c6b26182ff0fbcb458283c4205",
+      "description": "System CA certificates as a bundle",
+      "arch": "noarch",
+      "license": "GPL-2.0-or-later MPL-2.0",
+      "origin": "feeds/base/system/ca-certificates",
+      "installed-size": 180797,
+      "file-size": 107135,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "ca-bundle-any",
+        "ca-certificates-any",
+        "ca-certs"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "cgi-io",
+      "version": "2026.07.21~31cb3c89-r1",
+      "hashes": "3a3d1c48a220bf4fbb3570966353e79e08b6e11b1bdb164692dd3be00ebed0d1",
+      "description": "This package contains an cgi utility that is useful for up/downloading files",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-or-later",
+      "origin": "feeds/packages/feeds/packages/net/cgi-io",
+      "maintainer": "John Crispin <blogic@openwrt.org>",
+      "installed-size": 20687,
+      "file-size": 10220,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028"
+      ],
+      "provides": [
+        "cgi-io-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "dnsmasq",
+      "version": "2.93-r12",
+      "hashes": "0f233fe615b35339d4a90cc8af444d5709d0c4b29d80428505beb5211d2ece71",
+      "description": "It is intended to provide coupled DNS and DHCP service to a LAN.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/services/dnsmasq",
+      "url": "http://www.thekelleys.org.uk/dnsmasq/",
+      "installed-size": 315011,
+      "file-size": 155463,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libubus20261028"
+      ],
+      "provides": [
+        "dnsmasq-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:thekelleys:dnsmasq"
+      ]
+    }, {
+      "name": "dropbear",
+      "version": "2026.94-r3",
+      "hashes": "6605086641d4a38b80f29c92d5b004bfcae3a2f77bd187a9c16291876721cdb4",
+      "description": "A small SSH2 server/client designed for small memory environments.",
+      "arch": "aarch64_cortex-a53",
+      "license": "MIT",
+      "origin": "feeds/base/network/services/dropbear",
+      "url": "https://matt.ucc.asn.au/dropbear/",
+      "installed-size": 251335,
+      "file-size": 127722,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "dropbear-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:dropbear_ssh_project:dropbear_ssh"
+      ]
+    }, {
+      "name": "e2fsprogs",
+      "version": "1.47.4-r1",
+      "hashes": "f373ef4e3e3fc7f4c4469e5fc7b3f9d40e02d7383640edcce9a4ef98ae0a4d78",
+      "description": "This package contains essential ext2 filesystem utilities which consists of e2fsck, mke2fs and most of the other core ext2 filesystem utilities.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/e2fsprogs",
+      "url": "https://e2fsprogs.sourceforge.net/",
+      "installed-size": 417104,
+      "file-size": 183677,
+      "depends": [
+        "libc",
+        "libe2p2",
+        "libext2fs2",
+        "libuuid1"
+      ],
+      "provides": [
+        "e2fsprogs-any"
+      ],
+      "tags": [
+        "openwrt:section=utils",
+        "openwrt:cpe=cpe:/a:e2fsprogs_project:e2fsprogs"
+      ]
+    }, {
+      "name": "firewall4",
+      "version": "2026.11.08~3722eadc-r1",
+      "hashes": "49df88ea40f793cd4f34a5b0800178038769cb624b7fa7ffafe838ee0d849a44",
+      "description": "This package provides an nftables-based implementation of the UCI firewall sharing the same configuration format.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/network/config/firewall4",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 138247,
+      "file-size": 33913,
+      "provider-priority": 100,
+      "depends": [
+        "kmod-nft-core",
+        "kmod-nft-fib",
+        "kmod-nft-nat",
+        "kmod-nft-offload",
+        "libc",
+        "nftables-json",
+        "ucode>=2022.03.22",
+        "ucode-mod-fs",
+        "ucode-mod-ubus",
+        "ucode-mod-uci"
+      ],
+      "provides": [
+        "firewall4-any",
+        "uci-firewall=2026.11.08~3722eadc-r1"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "fstools",
+      "version": "2026.11.07~5e371ecf-r1",
+      "hashes": "30a7fe422e35d0edb1be13df41a54e972065f267de61681e70a518232e8f4718",
+      "description": "OpenWrt filesystem tools",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/fstools",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 57864,
+      "file-size": 21359,
+      "depends": [
+        "libc",
+        "ubox"
+      ],
+      "provides": [
+        "fstools-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "fwtool",
+      "version": "2025.10.03~04cd252e-r1",
+      "hashes": "46a7223582e00e853f1770f225d229c7dd12e96b84daa677c2bfddb35ea9ce3d",
+      "description": "Utility for appending and extracting firmware metadata and signatures",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/fwtool",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 8220,
+      "file-size": 4666,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "fwtool-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "getrandom",
+      "version": "2026.11.15~b0635f42-r1",
+      "hashes": "5a1f9fda6a1f77dcdebbb3363beb03f2ea0d65ab793a5203d221673f5384b4e9",
+      "description": "OpenWrt getrandom system helper",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/ubox",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 4078,
+      "file-size": 2259,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "getrandom-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "hostapd-common",
+      "version": "2026.08.07~831364bf-r9",
+      "hashes": "1edca77f621471a58970ccd14c8085cf3f11e5996ab4494a336f42b76425b6b1",
+      "description": "hostapd/wpa_supplicant common support files",
+      "arch": "aarch64_cortex-a53",
+      "license": "BSD-3-Clause",
+      "origin": "feeds/base/network/services/hostapd",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 2344,
+      "file-size": 1928,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "hostapd-common-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:w1.fi:hostapd"
+      ]
+    }, {
+      "name": "iw",
+      "version": "6.17-r1",
+      "hashes": "e8be24e30ac8f7ccad1d4d79afcad75c83023c6316116e9c039425044038db33",
+      "description": "cfg80211 interface configuration utility",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/utils/iw",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://wireless.docs.kernel.org/en/latest/en/users/documentation/iw.html",
+      "installed-size": 135976,
+      "file-size": 57013,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libnl-tiny1"
+      ],
+      "provides": [
+        "iw-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:kernel:iw"
+      ]
+    }, {
+      "name": "jansson4",
+      "version": "2.15.1-r1",
+      "hashes": "0a17becd72cf78acfb7c8869399fce4ca5b0c5988cd19625ff379361ef32886f",
+      "description": "Jansson is a C library for encoding, decoding and manipulating JSON data",
+      "arch": "aarch64_cortex-a53",
+      "license": "MIT",
+      "origin": "feeds/base/libs/jansson",
+      "url": "https://github.com/akheron/jansson",
+      "installed-size": 73866,
+      "file-size": 40266,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "jansson",
+        "jansson-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=4",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:jansson_project:jansson"
+      ]
+    }, {
+      "name": "jshn",
+      "version": "2026.11.03~a396f38a-r1",
+      "hashes": "bd9bd7a1c2c52bc922e70e85fa95b9c7f17405146f56cf75db9ff1a8601868fd",
+      "description": "Library for parsing and generating JSON from shell scripts",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/libubox",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 19909,
+      "file-size": 7560,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libjson-c5",
+        "libubox20261103"
+      ],
+      "provides": [
+        "jshn-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "jsonfilter",
+      "version": "2026.03.16~b9034210-r1",
+      "hashes": "3ffcb8a58b867d75b386d664753bc8dac05fbd708a537decba9b97fd1adc8071",
+      "description": "OpenWrt JSON filter utility",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/jsonfilter",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "url": "https://git.openwrt.org/project/jsonpath.git",
+      "installed-size": 24799,
+      "file-size": 11121,
+      "depends": [
+        "libc",
+        "libjson-c5",
+        "libubox20261103"
+      ],
+      "provides": [
+        "jsonfilter-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "kernel",
+      "version": "6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+      "hashes": "cae23f5e2346957782ca1b924e361c8c2e0d9caae261b488609cdc13c7ba1082",
+      "description": "Virtual kernel package",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "url": "https://www.kernel.org/",
+      "installed-size": 16608,
+      "file-size": 4897,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "kernel-any"
+      ],
+      "tags": [
+        "openwrt:section=sys",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-aic8800-sdio",
+      "version": "6.18.64.2026.03.10~89f865b8-r6",
+      "hashes": "41505dd958b7ee062bc4150ac5d0746e2a398c0adedb8a6d833ff20139151730",
+      "description": "Aicsemi aic8800 Wi-Fi SDIO support",
+      "arch": "aarch64_cortex-a53",
+      "origin": "feeds/base/kernel/aic8800",
+      "installed-size": 966198,
+      "file-size": 241874,
+      "depends": [
+        "aic8800-sdio-firmware",
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-cfg80211",
+        "kmod-mmc"
+      ],
+      "provides": [
+        "kmod-aic8800-sdio-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel"
+      ]
+    }, {
+      "name": "kmod-cfg80211",
+      "version": "6.18.64.7.2-r18",
+      "hashes": "dffb1887b6afe6781bbfc5c8579a88c23fd9765e5cb240b68d7ef183404a6345",
+      "description": "cfg80211 is the Linux wireless LAN (802.11) configuration API.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/mac80211",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://wireless.wiki.kernel.org/",
+      "installed-size": 625664,
+      "file-size": 216779,
+      "provider-priority": 10,
+      "depends": [
+        "iw",
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "wifi-scripts",
+        "wireless-regdb"
+      ],
+      "provides": [
+        "kmod-cfg80211-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel"
+      ]
+    }, {
+      "name": "kmod-lib-crc-ccitt",
+      "version": "6.18.64-r1",
+      "hashes": "4cf82f59450d251cb59d23060b083db41b5c31e3bf9fc224de02cdf1d1127a09",
+      "description": "Kernel module for CRC-CCITT support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 3689,
+      "file-size": 2215,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-lib-crc-ccitt-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-mii",
+      "version": "6.18.64-r1",
+      "hashes": "6513f3fb925856bc82612582e2986e1f3a3e55f71e3818b1f5ea3d9314aef375",
+      "description": "MII library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 53,
+      "file-size": 942,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-mii-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-mmc",
+      "version": "6.18.64-r1",
+      "hashes": "2112d51dace472778e5d226eb1d5fa61949f772eeef09df080f6e4b7f8e86588",
+      "description": "Kernel support for MMC/SD cards",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 62,
+      "file-size": 961,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-mmc-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-conntrack",
+      "version": "6.18.64-r1",
+      "hashes": "32805374054801997cd5ad509b30a10ae2af09e6d04628cf28ddd3fba820e432",
+      "description": "Netfilter connection tracking",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 167763,
+      "file-size": 53103,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nf-conntrack-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-flow",
+      "version": "6.18.64-r1",
+      "hashes": "6ae92f1c411d46ea38270762d65a15a09291ba94cb68f913323f205cd1b4bfb0",
+      "description": "Netfilter flowtable support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 50699,
+      "file-size": 20921,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nf-conntrack",
+        "kmod-nft-core"
+      ],
+      "provides": [
+        "kmod-nf-flow-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-log",
+      "version": "6.18.64-r1",
+      "hashes": "406b7d27de2a20bb37029e6ae6726b0986cabb989d00b59064c3d4601b64c54c",
+      "description": "Netfilter Logging",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 25594,
+      "file-size": 8696,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nf-log-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-nat",
+      "version": "6.18.64-r1",
+      "hashes": "c438a17d1588a4ee3b8e2627075f40ac7191c20c44c4335a57b4748dfc381dee",
+      "description": "Netfilter NAT",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 43756,
+      "file-size": 16206,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nf-conntrack"
+      ],
+      "provides": [
+        "kmod-nf-nat-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-reject",
+      "version": "6.18.64-r1",
+      "hashes": "c7b00cd1be89d97e666de5bde73d0063e2f8d35b2d7805c5aa26c519cf26c9fd",
+      "description": "Netfilter IPv4 reject support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 8167,
+      "file-size": 4181,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nf-reject-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nf-reject6",
+      "version": "6.18.64-r1",
+      "hashes": "50164ee16dac473a9d37871b73da64a54a287398d4d269df7a96a8b6b3f554dc",
+      "description": "Netfilter IPv6 reject support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 8920,
+      "file-size": 4523,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nf-reject6-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nfnetlink",
+      "version": "6.18.64-r1",
+      "hashes": "8e1d5727f377abe26b94a18bb1e1b22c8ab9060e112aab845564c7a241b953b2",
+      "description": "Kernel modules support for a netlink-based userspace interface",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 16589,
+      "file-size": 6113,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nfnetlink-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nft-core",
+      "version": "6.18.64-r1",
+      "hashes": "95da573c0b2e536754d74fce50a40df8813d2bd07a534452e4ae5499b4df2b02",
+      "description": "Kernel module support for nftables",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 403812,
+      "file-size": 136805,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nf-log",
+        "kmod-nf-nat",
+        "kmod-nf-reject",
+        "kmod-nf-reject6",
+        "kmod-nfnetlink"
+      ],
+      "provides": [
+        "kmod-nft-core-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nft-fib",
+      "version": "6.18.64-r1",
+      "hashes": "59ff1a2d9c1c1317ee5904a34bbcbfbf25dfb86cf942e6382da6a21e4eebe034",
+      "description": "Netfilter nf_tables fib support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 27293,
+      "file-size": 7019,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nft-core"
+      ],
+      "provides": [
+        "kmod-nft-fib-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nft-nat",
+      "version": "6.18.64-r1",
+      "hashes": "9bbf61debed9ccae683a58a7c5e782c71b0128317871f45c97522d9635f97f68",
+      "description": "Netfilter nf_tables NAT support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 21829,
+      "file-size": 5694,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nf-nat",
+        "kmod-nft-core"
+      ],
+      "provides": [
+        "kmod-nft-nat-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nft-offload",
+      "version": "6.18.64-r1",
+      "hashes": "d1338ac4ee2b11bfb595fba638a1f0f82718b4a10ee5611b4fdeeed520131271",
+      "description": "Netfilter nf_tables routing/NAT offload support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 13403,
+      "file-size": 4373,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nf-flow",
+        "kmod-nft-nat"
+      ],
+      "provides": [
+        "kmod-nft-offload-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-nls-base",
+      "version": "6.18.64-r1",
+      "hashes": "b27608e489805f03596f3d1a63d2b43f386710f5b3d0f0fd44138146b0df7621",
+      "description": "Kernel module for NLS (Native Language Support)",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 1,
+      "file-size": 800,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-nls-base-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-ppp",
+      "version": "6.18.64-r1",
+      "hashes": "46af3683155a8e065642ca86ab5a6c5341c9423dd262e8440783cd6b3aa1d122",
+      "description": "Kernel modules for PPP support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 80939,
+      "file-size": 27367,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-lib-crc-ccitt",
+        "kmod-slhc"
+      ],
+      "provides": [
+        "kmod-ppp-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-pppoe",
+      "version": "6.18.64-r1",
+      "hashes": "aa7c4fdea0991c096329448d67329563ab58deefb3ae9b0353d5d8d53256c91b",
+      "description": "Kernel module for PPPoE (PPP over Ethernet) support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 23369,
+      "file-size": 9050,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-ppp",
+        "kmod-pppox"
+      ],
+      "provides": [
+        "kmod-pppoe-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-pppox",
+      "version": "6.18.64-r1",
+      "hashes": "93ec9e2d682f58d02b237a3fad0a328e9b917a7a129d72088e28a0bd95fad557",
+      "description": "Kernel helper module for PPPoE and PPTP support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 7750,
+      "file-size": 2945,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-ppp"
+      ],
+      "provides": [
+        "kmod-pppox-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-slhc",
+      "version": "6.18.64-r1",
+      "hashes": "68d71b985bda8a00b78657ff93248efaa14123d2aecd0234f8a97e0a8183ef7f",
+      "description": "Serial Line Header Compression",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 8637,
+      "file-size": 4530,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-slhc-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-acm",
+      "version": "6.18.64-r1",
+      "hashes": "204a3dc3e878ab3fe1e33839bad692abacece30afae8800240b45b3b50c73ebf",
+      "description": "Kernel support for USB ACM devices (modems/isdn controllers)",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 41247,
+      "file-size": 13551,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-core"
+      ],
+      "provides": [
+        "kmod-usb-acm-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-common",
+      "version": "6.18.64-r1",
+      "hashes": "c41056e2e0b6d75c7ebfd2fca883861ab64bc18aa94827c2338bd1de18f9b1e7",
+      "description": "USB common",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 74,
+      "file-size": 950,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1"
+      ],
+      "provides": [
+        "kmod-usb-common-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-core",
+      "version": "6.18.64-r1",
+      "hashes": "815f8815eebe7b70ed54ad5703e6e1bf4587409c4d9c28e015077ce6694f2fc0",
+      "description": "Kernel support for USB",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 67,
+      "file-size": 983,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-nls-base",
+        "kmod-usb-common"
+      ],
+      "provides": [
+        "kmod-usb-core-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-net",
+      "version": "6.18.64-r1",
+      "hashes": "b7ec4a8071ac86931a094bab35dab6cfefbb4e36a07b3750ee646f544ad721d3",
+      "description": "Kernel modules for USB-to-Ethernet convertors",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 44117,
+      "file-size": 14825,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-mii",
+        "kmod-usb-core"
+      ],
+      "provides": [
+        "kmod-usb-net-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-net-cdc-ether",
+      "version": "6.18.64-r1",
+      "hashes": "3a19cb8b2d429fbd928ed72381d9964991deca603fae0c6117719237e44f1077",
+      "description": "Kernel support for USB CDC Ethernet devices",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 17053,
+      "file-size": 4978,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-net"
+      ],
+      "provides": [
+        "kmod-usb-net-cdc-ether-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-net-cdc-mbim",
+      "version": "6.18.64-r1",
+      "hashes": "5b51b82da74c3569881e8cc0b0b881e656d5c5a234ddc67c5609bf4213927e3a",
+      "description": "Kernel module for CDC MBIM (Mobile Broadband Interface Model) devices",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 13842,
+      "file-size": 5192,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-net",
+        "kmod-usb-net-cdc-ncm",
+        "kmod-usb-wdm"
+      ],
+      "provides": [
+        "kmod-usb-net-cdc-mbim-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-net-cdc-ncm",
+      "version": "6.18.64-r1",
+      "hashes": "de07954b4aa37702d7331fbda6bcffc6e889465422199536acb50f2ba58aec6f",
+      "description": "Kernel support for CDC NCM connections",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 36111,
+      "file-size": 12030,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-net",
+        "kmod-usb-net-cdc-ether"
+      ],
+      "provides": [
+        "kmod-usb-net-cdc-ncm-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-net-qmi-wwan",
+      "version": "6.18.64-r1",
+      "hashes": "63719283c5f478e026aee87d2287145867a3c10e29bae6893c565b7eac66751a",
+      "description": "QMI WWAN driver for Qualcomm MSM based 3G and LTE modems",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 66154,
+      "file-size": 12165,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-net",
+        "kmod-usb-wdm"
+      ],
+      "provides": [
+        "kmod-usb-net-qmi-wwan-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-serial",
+      "version": "6.18.64-r1",
+      "hashes": "84b3e90a215b21b04ec526e8c1e2408dfe053a9191d228e6c4a795ce2771ad6e",
+      "description": "Kernel support for USB-to-Serial converters",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 49926,
+      "file-size": 16380,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-core"
+      ],
+      "provides": [
+        "kmod-usb-serial-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-serial-option",
+      "version": "6.18.64-r1",
+      "hashes": "3dc03e4eddfd58f336cc64fdb2c1d908e9d60049391f9b19ad9a710748aea9d6",
+      "description": "Kernel support for Option HSDPA modems",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 134831,
+      "file-size": 14235,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-serial",
+        "kmod-usb-serial-wwan"
+      ],
+      "provides": [
+        "kmod-usb-serial-option-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-serial-wwan",
+      "version": "6.18.64-r1",
+      "hashes": "ed5cd4fe7111f128d99c11d29e888060334a756db44e4d04733aa8da93ccc6de",
+      "description": "Kernel support for USB GSM and CDMA modems",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 14177,
+      "file-size": 5563,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-serial"
+      ],
+      "provides": [
+        "kmod-usb-serial-wwan-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "kmod-usb-wdm",
+      "version": "6.18.64-r1",
+      "hashes": "1fc259ad1dea3e4a972aa413aaeb6d19d7c295b2d5027c007f115ab066335134",
+      "description": "USB Wireless Device Management support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/kernel/linux",
+      "installed-size": 24919,
+      "file-size": 8756,
+      "depends": [
+        "kernel=6.18.64~e96cd0a5ab2bd65c81f87601710273a6-r1",
+        "kmod-usb-core"
+      ],
+      "provides": [
+        "kmod-usb-wdm-any"
+      ],
+      "tags": [
+        "openwrt:section=kernel",
+        "openwrt:cpe=cpe:/o:linux:linux_kernel"
+      ]
+    }, {
+      "name": "libblkid1",
+      "version": "2.42.2-r1",
+      "hashes": "fbe7ac9a9b6c53ec6a9e728e353dcaaf4ba82570ca72f52eefae1f72b3f88a74",
+      "description": "The libblkid library is used to identify block devices (disks) as to their content (e.g. filesystem type, partitions) as well as extracting additional information such as filesystem labels/volume names, partitions, unique identifiers/serial numbers...",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1-or-later",
+      "origin": "feeds/base/utils/util-linux",
+      "url": "https://www.kernel.org/pub/linux/utils/util-linux/",
+      "installed-size": 312258,
+      "file-size": 132086,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libuuid1"
+      ],
+      "provides": [
+        "libblkid",
+        "libblkid-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=1",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:kernel:util-linux"
+      ]
+    }, {
+      "name": "libblobmsg-json20261103",
+      "version": "2026.11.03~a396f38a-r1",
+      "hashes": "3bd0f164d3fb479585bc9010be2ea55b7269152c055925a15855430376b43f43",
+      "description": "blobmsg <-> json conversion library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/libubox",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 12323,
+      "file-size": 4821,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libjson-c5",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libblobmsg-json",
+        "libblobmsg-json-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20261103",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libc",
+      "version": "1.2.6-r5",
+      "hashes": "e92758f3bbac1c04269a0124832413ebbfcf2b07d12aed0bbabf35806958d4d2",
+      "description": "C library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-3.0-with-GCC-exception",
+      "origin": "feeds/base/libs/toolchain",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "http://www.musl-libc.org/",
+      "installed-size": 590904,
+      "file-size": 295364,
+      "depends": [
+        "libgcc1"
+      ],
+      "provides": [
+        "libc-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libcomerr0",
+      "version": "1.47.4-r1",
+      "hashes": "146ebd0d604e0724987abf8a413a69e780b7b585608b805e2a1424991a80cdfe",
+      "description": "This package contains libcom_err, the common error description library bundled with e2fsprogs.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/e2fsprogs",
+      "url": "https://e2fsprogs.sourceforge.net/",
+      "installed-size": 12350,
+      "file-size": 4857,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libuuid1"
+      ],
+      "provides": [
+        "libcomerr",
+        "libcomerr-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=0",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:e2fsprogs_project:e2fsprogs"
+      ]
+    }, {
+      "name": "libe2p2",
+      "version": "1.47.4-r1",
+      "hashes": "983e65e5765e240faa5cf93e64ab7c0a949fcbc6d0cc0157a1cf47c901f2e955",
+      "description": "This package contains libe2p, ext2fs userspace programs utility library bundled with e2fsprogs.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/e2fsprogs",
+      "url": "https://e2fsprogs.sourceforge.net/",
+      "installed-size": 30518,
+      "file-size": 13424,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libuuid1"
+      ],
+      "provides": [
+        "libe2p",
+        "libe2p-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=2",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:e2fsprogs_project:e2fsprogs"
+      ]
+    }, {
+      "name": "libext2fs2",
+      "version": "1.47.4-r1",
+      "hashes": "d852b05f8c43a5175aaad5c9efd474122cb8c7260889ad89ff0d26a743f14f19",
+      "description": "libext2fs is a library which can access ext2, ext3 and ext4 filesystems.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/e2fsprogs",
+      "url": "https://e2fsprogs.sourceforge.net/",
+      "installed-size": 399293,
+      "file-size": 188572,
+      "provider-priority": 10,
+      "depends": [
+        "libblkid1",
+        "libc",
+        "libcomerr0",
+        "libss2",
+        "libuuid1"
+      ],
+      "provides": [
+        "libext2fs",
+        "libext2fs-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=2",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:e2fsprogs_project:e2fsprogs"
+      ]
+    }, {
+      "name": "libf2fs6",
+      "version": "1.16.0-r4",
+      "hashes": "c32fcf4f4b86e45abb3c704b40d8ac94ada692713ff8c67cd85d96f29eea3561",
+      "description": "Library for Flash-Friendly File System (F2FS) tools",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/utils/f2fs-tools",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 98375,
+      "file-size": 42551,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libuuid1"
+      ],
+      "provides": [
+        "libf2fs",
+        "libf2fs-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=6",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:f2fs-tools_project:f2fs-tools"
+      ]
+    }, {
+      "name": "libgcc1",
+      "version": "15.3.0-r5",
+      "hashes": "b9d71ceed5fce782e3aee998b2666156eec798ebb69cb1b26e11024aa84f53c9",
+      "description": "GCC support library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-3.0-with-GCC-exception",
+      "origin": "feeds/base/libs/toolchain",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://gcc.gnu.org/",
+      "installed-size": 131107,
+      "file-size": 51668,
+      "provider-priority": 10,
+      "provides": [
+        "libgcc",
+        "libgcc-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=1",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libiwinfo-data",
+      "version": "2026.05.26~66bdd1a0-r1",
+      "hashes": "d162f1ab490f53064e412809114b87bdf0fd8ed6f4fb1cf39b590feb897099de",
+      "description": "libiwinfo Lua binding",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/utils/iwinfo",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 18264,
+      "file-size": 3925,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libiwinfo-data-any"
+      ],
+      "tags": [
+        "openwrt:section=opt"
+      ]
+    }, {
+      "name": "libiwinfo20230701",
+      "version": "2026.05.26~66bdd1a0-r1",
+      "hashes": "64d6714e98e432347d2e9c0f8c6ce61f2599638b1ba10e4ca41a5224f8ec5b32",
+      "description": "Wireless information library with simplified API for nl80211 and wext driver interfaces.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/utils/iwinfo",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 65620,
+      "file-size": 29267,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libiwinfo-data",
+        "libnl-tiny1",
+        "libubus20261028",
+        "libuci20250120"
+      ],
+      "provides": [
+        "libiwinfo",
+        "libiwinfo-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20230701",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libjson-c5",
+      "version": "0.19-r3",
+      "hashes": "44ee35864ea2e3605402364857ff2373bbf6637f44455950efeee47ea014cf3c",
+      "description": "This package contains a library for javascript object notation backends.",
+      "arch": "aarch64_cortex-a53",
+      "license": "MIT",
+      "origin": "feeds/base/libs/libjson-c",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://json-c.github.io/json-c/",
+      "installed-size": 73834,
+      "file-size": 33432,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libjson-c",
+        "libjson-c-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=5",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:json-c:json-c"
+      ]
+    }, {
+      "name": "libjson-script20261103",
+      "version": "2026.11.03~a396f38a-r1",
+      "hashes": "9f952f38b89e0e186fff8f29fdcc6729dca8f2420ce6cc0da1e561c3cfd64cb3",
+      "description": "Minimalistic JSON based scripting engine",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/libubox",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 12337,
+      "file-size": 5969,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libjson-script",
+        "libjson-script-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20261103",
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "liblucihttp-ucode",
+      "version": "2023.03.15~9b5b683f-r1",
+      "hashes": "94a66ffd7cafeecee842bc6af65bdd78f8743c6ad5cb07e3b25beb8e3e7ed73a",
+      "description": "ucode binding for the LuCI HTTP utility library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/luci/feeds/luci/contrib/package/lucihttp",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 12317,
+      "file-size": 4604,
+      "depends": [
+        "libc",
+        "liblucihttp0",
+        "libucode20261009"
+      ],
+      "provides": [
+        "liblucihttp-ucode-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "liblucihttp0",
+      "version": "2023.03.15~9b5b683f-r1",
+      "hashes": "11c085e98957f87b040ea0600ca07e112c51150945a807ea9e7d2995d33ec886",
+      "description": "LuCI HTTP utility library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/luci/feeds/luci/contrib/package/lucihttp",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 16440,
+      "file-size": 8570,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "liblucihttp",
+        "liblucihttp-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=0",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libmbedtls21",
+      "version": "3.6.8-r2",
+      "hashes": "2a4535346b0012357cfe4677bc2badb367d00ecf10f7fbdcd051cdbe6b62a3a1",
+      "description": "The aim of the mbedtls project is to provide a quality, open-source cryptographic library written in C and targeted at embedded systems. This package contains the mbedtls library.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-or-later",
+      "origin": "feeds/base/libs/mbedtls",
+      "url": "https://www.trustedfirmware.org/projects/mbed-tls/",
+      "installed-size": 721333,
+      "file-size": 339329,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libmbedtls",
+        "libmbedtls-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=21",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:arm:mbed_tls"
+      ]
+    }, {
+      "name": "libmnl0",
+      "version": "1.0.5-r2",
+      "hashes": "c2c5b6ee87b8787d9567e08197445a3ae9233e882c27ecfc29141cb9e55a1179",
+      "description": "libmnl is a minimalistic user-space library oriented to Netlink developers. There are a lot of common tasks in parsing, validating, constructing of both the Netlink header and TLVs that are repetitive and easy to get wrong. This library aims to provide simple helpers that allows you to re-use code and to avoid re-inventing the wheel. The main features of this library are: . * Small: the shared library requires around 30KB for an x86-based computer. . * Simple: this library avoids complexity and elaborated abstractions that tend to hide Netlink details. . * Easy to use: the library simplifies the work for Netlink-wise developers. It provides functions to make socket handling, message building, validating, parsing and sequence tracking, easier. . * Easy to re-use: you can use the library to build your own abstraction layer on top of this library. . * Decoupling: the interdependency of the main bricks that compose the library is reduced, i.e. the library provides many helpers, but the programmer is not forced to use them.",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1+",
+      "origin": "feeds/base/libs/libmnl",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "url": "http://www.netfilter.org/projects/libmnl/",
+      "installed-size": 20528,
+      "file-size": 8334,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libmnl",
+        "libmnl-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=0",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:netfilter:libmnl"
+      ]
+    }, {
+      "name": "libnftnl11",
+      "version": "1.3.2-r1",
+      "hashes": "110391c8c32ecf8f56dc71798b6f72c9a23ee08996efa12e944b715edfdfdb0d",
+      "description": "libnftnl is a userspace library providing a low-level netlink programming interface (API) to the in-kernel nf_tables subsystem.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-or-later",
+      "origin": "feeds/base/libs/libnftnl",
+      "maintainer": "Steven Barth <steven@midlink.org>",
+      "url": "http://www.netfilter.org/projects/libnftnl",
+      "installed-size": 202318,
+      "file-size": 65035,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libmnl0"
+      ],
+      "provides": [
+        "libnftnl",
+        "libnftnl-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=11",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:netfilter:libnftnl"
+      ]
+    }, {
+      "name": "libnl-tiny1",
+      "version": "2025.12.02~40493a65-r1",
+      "hashes": "4f528dcf3af1c1a03fd0d4d25610998a74c684f56bf96acec8e471313b3e9b16",
+      "description": "This package contains a stripped down version of libnl",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/libs/libnl-tiny",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 37475,
+      "file-size": 17131,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libnl-tiny",
+        "libnl-tiny-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=1",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libpthread",
+      "version": "1.2.6-r5",
+      "hashes": "dfc4502eaa59f91f5d219f83a2c4f0784d5ff1afc588a9b04f28adc16deb0b76",
+      "description": "POSIX thread library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-3.0-with-GCC-exception",
+      "origin": "feeds/base/libs/toolchain",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "http://www.musl-libc.org/",
+      "installed-size": 1,
+      "file-size": 766,
+      "depends": [
+        "libgcc1"
+      ],
+      "provides": [
+        "libpthread-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "librt",
+      "version": "1.2.6-r5",
+      "hashes": "c38d3aed35dbc77d3867803ca67aa6a79ae044736dc5c5a9e652967129c7ca4f",
+      "description": "POSIX.1b RealTime extension library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-3.0-with-GCC-exception",
+      "origin": "feeds/base/libs/toolchain",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "http://www.musl-libc.org/",
+      "installed-size": 1,
+      "file-size": 783,
+      "depends": [
+        "libpthread"
+      ],
+      "provides": [
+        "librt-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libsmartcols1",
+      "version": "2.42.2-r1",
+      "hashes": "8d45ad197b89cc3d0782cf8777fb0722ff773f69ac9be04d6c5afbde5af7bf8c",
+      "description": "The smartcols library is used to print tables and trees in a pretty way.",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1-or-later",
+      "origin": "feeds/base/utils/util-linux",
+      "url": "https://www.kernel.org/pub/linux/utils/util-linux/",
+      "installed-size": 155715,
+      "file-size": 63636,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "librt"
+      ],
+      "provides": [
+        "libsmartcols",
+        "libsmartcols-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=1",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:kernel:util-linux"
+      ]
+    }, {
+      "name": "libss2",
+      "version": "1.47.4-r1",
+      "hashes": "49027274688ef71cbad5b881c7484cd65ca0425cfb659e870b46846dae74f621",
+      "description": "This pacakge contains libss, a command-line interface parsing library bundled with e2fsprogs.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/utils/e2fsprogs",
+      "url": "https://e2fsprogs.sourceforge.net/",
+      "installed-size": 20534,
+      "file-size": 9433,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libcomerr0"
+      ],
+      "provides": [
+        "libss",
+        "libss-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=2",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:e2fsprogs_project:e2fsprogs"
+      ]
+    }, {
+      "name": "libubox20261103",
+      "version": "2026.11.03~a396f38a-r1",
+      "hashes": "4d518c1bdbc845046a68711f6c37ee73d3f1904982ded779d12971566125b35b",
+      "description": "Basic utility library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/libubox",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 69754,
+      "file-size": 33360,
+      "provider-priority": 10,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "libubox",
+        "libubox-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20261103",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libubus20261028",
+      "version": "2026.10.28~db20eff5-r1",
+      "hashes": "838c866e51b03582e2009d9018224b709de8c839de0d0c8f5e6d8c790372bf1c",
+      "description": "OpenWrt RPC client library",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/system/ubus",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 28859,
+      "file-size": 13281,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libubus",
+        "libubus-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20261028",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libuci20250120",
+      "version": "2025.12.02~66127cd7-r1",
+      "hashes": "7cba68ea151a2f61d193b7dc268a4013d373ec6e6301d1e0a2ec2f69ea540afe",
+      "description": "C library for the Unified Configuration Interface (UCI)",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/system/uci",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 41074,
+      "file-size": 19626,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libuci",
+        "libuci-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20250120",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libuclient20201210",
+      "version": "2026.06.07~daad21fa-r1",
+      "hashes": "139a70dcb5abcd3dcbbca2553b90118442a0ed1d6503d8440dc109674f99d144",
+      "description": "HTTP/1.1 client library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/uclient",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 24601,
+      "file-size": 12407,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libuclient",
+        "libuclient-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20201210",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libucode20261009",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "81d40c3aec2b746fc4e4319b113b0cea2aaf2f0d5227ebc9d636124480a2479b",
+      "description": "The libucode package provides the shared runtime library for the ucode interpreter.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 209513,
+      "file-size": 96471,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "libjson-c5"
+      ],
+      "provides": [
+        "libucode",
+        "libucode-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20261009",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libudebug",
+      "version": "2026.09.25~6726e98a",
+      "hashes": "3a1467fa083fe52234b3863f1242d5cc765ae50f98e22d92a48eb24305c997fb",
+      "description": "udebug client library",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/libs/udebug",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 12359,
+      "file-size": 5046,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028"
+      ],
+      "provides": [
+        "libudebug-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libustream-mbedtls20201210",
+      "version": "2026.03.01~99f1c0db-r1",
+      "hashes": "24059b742955388b53efe2820dc681e1434b6e3a5dc8009938674cb296fef8bb",
+      "description": "ustream SSL Library (mbedtls)",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/ustream-ssl",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 16409,
+      "file-size": 6602,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libmbedtls21",
+        "libubox20261103"
+      ],
+      "provides": [
+        "libustream-mbedtls",
+        "libustream-mbedtls-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=20201210",
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "libuuid1",
+      "version": "2.42.2-r1",
+      "hashes": "010d8a0d32cb7d96449bb78fadee1a34ddf77e7a16646bd510b9b7a09a90f571",
+      "description": "The UUID library is used to generate unique identifiers for objects that may be accessible beyond the local system. This library generates UUIDs compatible with those created by the Open Software Foundation (OSF) Distributed Computing Environment (DCE) utility.",
+      "arch": "aarch64_cortex-a53",
+      "license": "BSD-3-Clause",
+      "origin": "feeds/base/utils/util-linux",
+      "url": "https://www.kernel.org/pub/linux/utils/util-linux/",
+      "installed-size": 28776,
+      "file-size": 14853,
+      "provider-priority": 10,
+      "depends": [
+        "libc",
+        "librt"
+      ],
+      "provides": [
+        "libuuid",
+        "libuuid-any"
+      ],
+      "tags": [
+        "openwrt:abiversion=1",
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:kernel:util-linux"
+      ]
+    }, {
+      "name": "logd",
+      "version": "2026.11.15~b0635f42-r1",
+      "hashes": "60e64858e4b6495a04166bf151182e709b1db0993fe23fb8c42045cb1e3f3776",
+      "description": "OpenWrt system log implementation",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/ubox",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 36295,
+      "file-size": 12985,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "libudebug"
+      ],
+      "provides": [
+        "logd-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "luci",
+      "version": "26.326.69067~256f696",
+      "hashes": "afb8e4f04ad843354165a0310b30f22e214b3ece7d322b2d140d470c4de30018",
+      "description": "Standard OpenWrt set including package management and attended sysupgrades support",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/collections/luci",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 1,
+      "file-size": 906,
+      "depends": [
+        "libc",
+        "luci-app-package-manager",
+        "luci-light"
+      ],
+      "provides": [
+        "luci-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-app-firewall",
+      "version": "26.326.69067~256f696",
+      "hashes": "1e66438fb25befeb903274d6c61c9c092f31d45d7d38d97209dfed76fd391a1b",
+      "description": "Firewall and port forwarding application",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/applications/luci-app-firewall",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 78197,
+      "file-size": 18862,
+      "depends": [
+        "libc",
+        "luci-base",
+        "uci-firewall"
+      ],
+      "provides": [
+        "luci-app-firewall-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-app-package-manager",
+      "version": "26.326.69067~256f696",
+      "hashes": "0bdc6226b9e44e64d0b5e814cebe9568914e6412fa25d2b362da791fc7e77d41",
+      "description": "Package management application",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/applications/luci-app-package-manager",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 35260,
+      "file-size": 11293,
+      "depends": [
+        "libc",
+        "luci-base"
+      ],
+      "provides": [
+        "luci-app-opkg=26.326.69067~256f696",
+        "luci-app-package-manager-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-base",
+      "version": "26.326.69067~256f696",
+      "hashes": "281af722ef05ff09ccacea5dd9849108274bb049bd1239e249f1a0380a59168d",
+      "description": "LuCI core runtime",
+      "arch": "aarch64_cortex-a53",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/modules/luci-base",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 770737,
+      "file-size": 164516,
+      "depends": [
+        "cgi-io",
+        "libc",
+        "liblucihttp-ucode",
+        "rpcd",
+        "rpcd-mod-file",
+        "rpcd-mod-luci",
+        "rpcd-mod-ucode",
+        "ucode>=2026.02.27",
+        "ucode-mod-fs",
+        "ucode-mod-html",
+        "ucode-mod-log",
+        "ucode-mod-ubus",
+        "ucode-mod-uci"
+      ],
+      "provides": [
+        "luci-base-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-lib-uqr",
+      "version": "26.326.69067~256f696",
+      "hashes": "ef39f2e294404bc29fdddafed56b9ff5a049f16457611ca7eced3f19e6ca4e96",
+      "description": "µQR - micro QR: SVG QRcode generator JS library",
+      "arch": "noarch",
+      "license": "MIT",
+      "origin": "feeds/luci/feeds/luci/libs/luci-lib-uqr",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 12736,
+      "file-size": 5591,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "luci-lib-uqr-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-light",
+      "version": "26.326.69067~256f696",
+      "hashes": "91c2bd04bb6fb3cd4551dc5074291c0d2d334d295f9f47fb5bb510676b77fe97",
+      "description": "Light OpenWrt set including admin support and the default Bootstrap theme",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/collections/luci-light",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 1,
+      "file-size": 989,
+      "depends": [
+        "libc",
+        "luci-app-firewall",
+        "luci-mod-admin-full",
+        "luci-proto-ipv6",
+        "luci-proto-ppp",
+        "luci-theme-bootstrap",
+        "rpcd-mod-rrdns",
+        "uhttpd",
+        "uhttpd-mod-ubus"
+      ],
+      "provides": [
+        "luci-light-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-mod-admin-full",
+      "version": "26.326.69067~256f696",
+      "hashes": "03b452dba6f3ec278875dffe526cd24422e3edfabf6087acb44a78a452204c74",
+      "description": "LuCI Administration - full-featured for full control",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/modules/luci-mod-admin-full",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 1,
+      "file-size": 920,
+      "depends": [
+        "libc",
+        "luci-base",
+        "luci-mod-network",
+        "luci-mod-status",
+        "luci-mod-system"
+      ],
+      "provides": [
+        "luci-mod-admin-full-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-mod-network",
+      "version": "26.326.69067~256f696",
+      "hashes": "422cb1606ac56f695536b7c097159d3f45ef861518cd3904c0b83f66bcaaf53c",
+      "description": "LuCI Network Administration",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/modules/luci-mod-network",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 335693,
+      "file-size": 87524,
+      "depends": [
+        "libc",
+        "luci-base",
+        "luci-lib-uqr",
+        "rpcd-mod-iwinfo"
+      ],
+      "provides": [
+        "luci-mod-network-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-mod-status",
+      "version": "26.326.69067~256f696",
+      "hashes": "01c8c485358eddf2473dd6efe4b9fb5e9fb1b26b42a78ce6515aa3ccb382a819",
+      "description": "LuCI Status Pages",
+      "arch": "aarch64_cortex-a53",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/modules/luci-mod-status",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 178429,
+      "file-size": 46314,
+      "depends": [
+        "libc",
+        "libiwinfo20230701",
+        "luci-base",
+        "rpcd-mod-iwinfo",
+        "ucode>=2026.02.27"
+      ],
+      "provides": [
+        "luci-mod-status-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-mod-system",
+      "version": "26.326.69067~256f696",
+      "hashes": "faf037af22079716ecb6a4410851602b03b2d8ee03961185d2593271db8570a5",
+      "description": "LuCI Administration - Global System Settings",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/modules/luci-mod-system",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 79959,
+      "file-size": 23722,
+      "depends": [
+        "libc",
+        "luci-base"
+      ],
+      "provides": [
+        "luci-mod-system-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-proto-ipv6",
+      "version": "26.326.69067~256f696",
+      "hashes": "2b4819855487f5ba0e4cfa1b3cc44ac0f87ac59a4ca7f6f6a1708d2ad22971a0",
+      "description": "Support for DHCPv6/6in4/6to4/6rd/DS-Lite/IPIP6",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/protocols/luci-proto-ipv6",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 15289,
+      "file-size": 4379,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "luci-proto-ipv6-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-proto-ppp",
+      "version": "26.326.69067~256f696",
+      "hashes": "ca9626bcef4d69578c99d0870d1b1d09fe8d7a2600d9c743ff32ac25da2af318",
+      "description": "Support for PPP/PPPoE/PPPoA/PPtP",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/protocols/luci-proto-ppp",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 15991,
+      "file-size": 3421,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "luci-proto-ppp-any"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "luci-theme-bootstrap",
+      "version": "26.326.69067~256f696",
+      "hashes": "6ae15f8afb121833fe6efa2d00cc5a89f22e8d84e3cac5a5b86ed07800664c81",
+      "description": "Bootstrap Theme (default)",
+      "arch": "noarch",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/themes/luci-theme-bootstrap",
+      "maintainer": "OpenWrt LuCI community",
+      "url": "https://github.com/openwrt/luci",
+      "installed-size": 67302,
+      "file-size": 20824,
+      "depends": [
+        "libc",
+        "luci-base",
+        "ucode>=2026.02.27"
+      ],
+      "provides": [
+        "luci-theme-bootstrap-any",
+        "luci-theme-openwrt=26.326.69067~256f696"
+      ],
+      "tags": [
+        "openwrt:section=luci"
+      ]
+    }, {
+      "name": "mkf2fs",
+      "version": "1.16.0-r4",
+      "hashes": "98fcf2a01d43be3eddddad1279e7843aae77e7007ca4c0e008fe36a86c5307d5",
+      "description": "Utility for creating a Flash-Friendly File System (F2FS)",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/utils/f2fs-tools",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs-tools.git",
+      "installed-size": 33367,
+      "file-size": 16268,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libf2fs6"
+      ],
+      "provides": [
+        "mkf2fs-any"
+      ],
+      "tags": [
+        "openwrt:section=utils",
+        "openwrt:cpe=cpe:/a:f2fs-tools_project:f2fs-tools"
+      ]
+    }, {
+      "name": "mtd",
+      "version": "29",
+      "hashes": "d76791babe13145cc5fb47cfd9e46bc03ff1fe76f1a96a577554445bb60bc1b6",
+      "description": "This package contains an utility useful to upgrade from other firmware or older OpenWrt releases.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0+",
+      "origin": "feeds/base/system/mtd",
+      "installed-size": 24614,
+      "file-size": 11078,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "mtd-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "netifd",
+      "version": "2026.10.28~a1e39a45-r1",
+      "hashes": "d2efb9aaa7748a9c022014d151ee387dcdb6597fadcb03e94554c9558f77beed",
+      "description": "OpenWrt Network Interface Configuration Daemon",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/config/netifd",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 302724,
+      "file-size": 135175,
+      "depends": [
+        "jshn",
+        "libc",
+        "libnl-tiny1",
+        "libubox20261103",
+        "libubus20261028",
+        "libuci20250120",
+        "libudebug",
+        "ubus",
+        "ubusd",
+        "ucode",
+        "ucode-mod-fs",
+        "ucode-mod-ubus",
+        "ucode-mod-uci",
+        "ucode-mod-uloop"
+      ],
+      "provides": [
+        "netifd-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "nftables-json",
+      "version": "1.1.7-r1",
+      "hashes": "8c0c874ac685defd6f7951754f1d3d44ffbbbfa33ddfd69197c840977c8918b0",
+      "description": "nftables userspace utility with JSON support",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/utils/nftables",
+      "url": "http://netfilter.org/projects/nftables/",
+      "installed-size": 828532,
+      "file-size": 331614,
+      "depends": [
+        "jansson4",
+        "kmod-nft-core",
+        "libc",
+        "libnftnl11"
+      ],
+      "provides": [
+        "nftables=1.1.7-r1",
+        "nftables-json-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "odhcp6c",
+      "version": "2026.06.27~10a52220-r4",
+      "hashes": "7253958c0daa38d3496b4f34560bdd7c8bf47b8826c9c11ed4aaf92b531e9cc3",
+      "description": "Embedded DHCPv6-client for OpenWrt",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/ipv6/odhcp6c",
+      "maintainer": "Álvaro Fernández Rojas <noltari@gmail.com>",
+      "installed-size": 86959,
+      "file-size": 41697,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028"
+      ],
+      "provides": [
+        "odhcp6c-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "odhcpd-ipv6only",
+      "version": "2026.11.17~4580970d-r1",
+      "hashes": "648629ad2bed5e96be2d3f0dda1ba0ed4c06806b089874ea836a52826915a029",
+      "description": "odhcpd is a daemon for serving and relaying IP management protocols to configure clients and downstream routers. It tries to follow the RFC 6204 requirements for IPv6 home routers. This is a variant with support for RA and DHCPv6. It can also be used to relay RA, DHCPv6 and NDP messages between routed (non-bridged) interfaces in case no delegated prefixes are available.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/services/odhcpd",
+      "maintainer": "Álvaro Fernández Rojas <noltari@gmail.com>",
+      "installed-size": 115253,
+      "file-size": 56773,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libjson-c5",
+        "libnl-tiny1",
+        "libubox20261103",
+        "libubus20261028",
+        "libuci20250120"
+      ],
+      "provides": [
+        "odhcpd-ipv6only-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "openwrt-keyring",
+      "version": "2025.12.10~f0670054-r1",
+      "hashes": "a56d05e712250c1ca443cd594956084f71a085389ea3d3d3c36e7e8d948145df",
+      "description": "The keyring of with the developer using and gpg public keys.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/openwrt-keyring",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "url": "https://openwrt.org/docs/guide-user/security/signatures",
+      "installed-size": 214,
+      "file-size": 1102,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "lede-keyring=2025.12.10~f0670054-r1",
+        "openwrt-keyring-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "partx-utils",
+      "version": "2.42.2-r1",
+      "hashes": "988fe91976b32f9aafadf0778c94642c0e256e076ad93c44d073738c5a0ffbbf",
+      "description": "contains partx, addpart, delpart",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-or-later",
+      "origin": "feeds/base/utils/util-linux",
+      "url": "https://www.kernel.org/pub/linux/utils/util-linux/",
+      "installed-size": 163926,
+      "file-size": 59456,
+      "depends": [
+        "libblkid1",
+        "libc",
+        "libsmartcols1"
+      ],
+      "provides": [
+        "partx-utils-any"
+      ],
+      "tags": [
+        "openwrt:section=utils",
+        "openwrt:cpe=cpe:/a:kernel:util-linux"
+      ]
+    }, {
+      "name": "ppp",
+      "version": "2.5.5-r1",
+      "hashes": "b6fe6fc91ecab97c912c3d9506183934ce6ffe136578ab40fd22f3af785ace18",
+      "description": "This package contains the PPP (Point-to-Point Protocol) daemon.",
+      "arch": "aarch64_cortex-a53",
+      "license": "BSD-4-Clause",
+      "origin": "feeds/base/network/services/ppp",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://ppp.samba.org/",
+      "installed-size": 330827,
+      "file-size": 147954,
+      "depends": [
+        "kmod-ppp",
+        "libc"
+      ],
+      "provides": [
+        "ppp-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:point-to-point_protocol_project:point-to-point_protocol"
+      ]
+    }, {
+      "name": "ppp-mod-pppoe",
+      "version": "2.5.5-r1",
+      "hashes": "a5bca6e493af12fb9a3d6d1c6c9b96fbdbb3d4404282827dba493926f12aa3aa",
+      "description": "This package contains a PPPoE (PPP over Ethernet) plugin for ppp.",
+      "arch": "aarch64_cortex-a53",
+      "license": "BSD-4-Clause",
+      "origin": "feeds/base/network/services/ppp",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://ppp.samba.org/",
+      "installed-size": 29879,
+      "file-size": 13350,
+      "depends": [
+        "kmod-pppoe",
+        "libc"
+      ],
+      "provides": [
+        "ppp-mod-pppoe-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:point-to-point_protocol_project:point-to-point_protocol"
+      ]
+    }, {
+      "name": "procd",
+      "version": "2026.11.03~fb611687-r3",
+      "hashes": "a376e049650282763e349be4d31245b66c06155e7358d7025baa79b1aa5cf7bc",
+      "description": "OpenWrt system process manager",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/procd",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 179640,
+      "file-size": 70376,
+      "provider-priority": 100,
+      "depends": [
+        "jshn",
+        "libblobmsg-json20261103",
+        "libc",
+        "libjson-c5",
+        "libjson-script20261103",
+        "libubox20261103",
+        "libubus20261028",
+        "libudebug",
+        "ubox",
+        "ubus",
+        "ubusd"
+      ],
+      "provides": [
+        "procd-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "procd-seccomp",
+      "version": "2026.11.03~fb611687-r3",
+      "hashes": "cd7f3dbaf242b37dad8847341e7feca13ae6702388ea3e1e6778aed6cf3ef00f",
+      "description": "OpenWrt process seccomp helper + trace2seccomp",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/procd",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 2959,
+      "file-size": 2120,
+      "depends": [
+        "libc",
+        "ucode",
+        "ucode-mod-fs"
+      ],
+      "provides": [
+        "procd-seccomp-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "procd-ujail",
+      "version": "2026.11.03~fb611687-r3",
+      "hashes": "28023a6cf42fff474b9854ce85bbe915dc25c780edf04784bb34f20ff8b211d8",
+      "description": "OpenWrt process jail helper",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/procd",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 198335,
+      "file-size": 93065,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "libuci20250120",
+        "libudebug"
+      ],
+      "provides": [
+        "procd-ujail-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "rpcd",
+      "version": "2026.10.28~469d7852-r1",
+      "hashes": "d85071db3fd96a1727285cd738e4705a13503de51099cbc5b2ab82f84d901ece",
+      "description": "This package provides the UBUS RPC backend server to expose various functionality to frontend programs via JSON-RPC.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/system/rpcd",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 63178,
+      "file-size": 27884,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libjson-c5",
+        "libubox20261103",
+        "libubus20261028",
+        "libuci20250120"
+      ],
+      "provides": [
+        "rpcd-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "rpcd-mod-file",
+      "version": "2026.10.28~469d7852-r1",
+      "hashes": "4b3acde40d9cd854827307c22450a748b8e133fd3a34a2e7cdda077afad36777",
+      "description": "Provides ubus calls for file and directory operations.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/system/rpcd",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 20680,
+      "file-size": 9196,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "rpcd"
+      ],
+      "provides": [
+        "rpcd-mod-file-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "rpcd-mod-iwinfo",
+      "version": "2026.10.28~469d7852-r1",
+      "hashes": "62cfc635c847ebbcc3cf68e7f59db1f2823ad4c32d1b11dc60688312611f7a45",
+      "description": "Provides ubus calls for accessing iwinfo data.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/system/rpcd",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 20706,
+      "file-size": 8307,
+      "depends": [
+        "libc",
+        "libiwinfo20230701>=2023.01.21",
+        "libubox20261103",
+        "libubus20261028",
+        "rpcd"
+      ],
+      "provides": [
+        "rpcd-mod-iwinfo-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "rpcd-mod-luci",
+      "version": "20261111-r1",
+      "hashes": "fa60d9f27f42f97b539a9a7a28653ca3164f3eddc77ba5545a58ddd3a249039c",
+      "description": "Provides LuCI backend ubus RPC operations.",
+      "arch": "aarch64_cortex-a53",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/libs/rpcd-mod-luci",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 37144,
+      "file-size": 17051,
+      "depends": [
+        "libc",
+        "libnl-tiny1",
+        "libubox20261103",
+        "libubus20261028",
+        "rpcd"
+      ],
+      "provides": [
+        "rpcd-mod-luci-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "rpcd-mod-rrdns",
+      "version": "20170710",
+      "hashes": "9ae92c77c624f8a30f2e358001efccd98ac5ca297cdd3d5c961cab4f5a04c788",
+      "description": "Provides rapid mass reverse DNS lookup functionality.",
+      "arch": "aarch64_cortex-a53",
+      "license": "Apache-2.0",
+      "origin": "feeds/luci/feeds/luci/libs/rpcd-mod-rrdns",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 12489,
+      "file-size": 4656,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "rpcd"
+      ],
+      "provides": [
+        "rpcd-mod-rrdns-any"
+      ],
+      "tags": [
+        "openwrt:section=libs"
+      ]
+    }, {
+      "name": "rpcd-mod-ucode",
+      "version": "2026.10.28~469d7852-r1",
+      "hashes": "bc73a929cfc2021072292d657fcba408a42a9dfdfdf6763c346eef393c58cdef",
+      "description": "Allows implementing plugins using ucode scripts.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/system/rpcd",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 20609,
+      "file-size": 9003,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "libucode20261009",
+        "rpcd"
+      ],
+      "provides": [
+        "rpcd-mod-ucode-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "uboot-envtools",
+      "version": "2026.10-r3",
+      "hashes": "b7694588a18a44184f7eca6e900567b0ea05a178f4b3b3b9f9c62946f991ee1f",
+      "description": "This package includes tools to read and modify U-Boot bootloader environment.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0 GPL-2.0+",
+      "origin": "feeds/base/boot/uboot-tools",
+      "url": "https://docs.u-boot-project.org/en/latest/",
+      "installed-size": 36017,
+      "file-size": 16900,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "uboot-envtools-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "ubox",
+      "version": "2026.11.15~b0635f42-r1",
+      "hashes": "be78a1cae45098c1459941c2321dc2596f0c258af5b2862dc99168c140f7caf1",
+      "description": "OpenWrt system helper toolbox",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/system/ubox",
+      "maintainer": "John Crispin <john@phrozen.org>",
+      "installed-size": 46660,
+      "file-size": 19170,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "libubus20261028",
+        "libuci20250120",
+        "ubus",
+        "ubusd"
+      ],
+      "provides": [
+        "ubox-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "ubus",
+      "version": "2026.10.28~db20eff5-r1",
+      "hashes": "d06de85beec3d1a72f60335778e9022081b9f9462286e02961194cac7f0f779f",
+      "description": "OpenWrt RPC client utility",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/system/ubus",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 16410,
+      "file-size": 7018,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubus20261028",
+        "ubusd"
+      ],
+      "provides": [
+        "ubus-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "ubusd",
+      "version": "2026.10.28~db20eff5-r1",
+      "hashes": "a94585cf630a2cf5834b345750be4460677c0dd6b058aa57f0d1f8519756b6ae",
+      "description": "OpenWrt RPC daemon",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/system/ubus",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 33021,
+      "file-size": 14903,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "ubusd-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "uci",
+      "version": "2025.12.02~66127cd7-r1",
+      "hashes": "9307c02770bfba1fa5e2dba72175a573d8a57b7dfb734b04f6db3d8e9d8818f7",
+      "description": "Utility for the Unified Configuration Interface (UCI)",
+      "arch": "aarch64_cortex-a53",
+      "license": "LGPL-2.1",
+      "origin": "feeds/base/system/uci",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 20706,
+      "file-size": 7753,
+      "depends": [
+        "libc",
+        "libuci20250120"
+      ],
+      "provides": [
+        "uci-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "uclient-fetch",
+      "version": "2026.06.07~daad21fa-r1",
+      "hashes": "753b09fbf6b7a915955844049f0e9b13288af2a44e45ea29717c26f8778d6974",
+      "description": "Tiny wget replacement using libuclient",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/libs/uclient",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 20625,
+      "file-size": 9189,
+      "provider-priority": 100,
+      "depends": [
+        "libc",
+        "libuclient20201210"
+      ],
+      "provides": [
+        "uclient-fetch-any",
+        "wget-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "ucode",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "5b0d3e4df60e296495b9b93792d4272cc51ea3963b38066544b64e6fd5366be3",
+      "description": "ucode is a tiny script interpreter featuring an ECMAScript oriented script language and Jinja-inspired templating.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 69651,
+      "file-size": 30765,
+      "depends": [
+        "libc",
+        "libucode20261009"
+      ],
+      "provides": [
+        "ucode-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-digest",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "9622270baf683c35f5eaa090bc1a8e4ba7177ccebf0edd72ccc5f6c9a58b036f",
+      "description": "The digest module allows ucode scripts to use libmd digests.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 40994,
+      "file-size": 17405,
+      "depends": [
+        "libc",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-digest-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-fs",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "a0d3bfe0b4e9c7d323b24955c52303b692748f797932c9a4b95a873a371dd725",
+      "description": "The filesystem plugin module allows interaction with the local file system.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 36887,
+      "file-size": 14090,
+      "depends": [
+        "libc",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-fs-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-html",
+      "version": "1",
+      "hashes": "cd4bfb365f0bc97f3e8541ba6bc179de5086e88c224e93649346cd344009326b",
+      "description": "ucode HTML utility library",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/luci/feeds/luci/contrib/package/ucode-mod-html",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 61465,
+      "file-size": 22907,
+      "depends": [
+        "libc",
+        "libucode20261009"
+      ],
+      "provides": [
+        "ucode-mod-html-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "ucode-mod-log",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "9911e8701b0364fb1b0235db10d301dc13f4b860a1b5f2f8acfaf8ab85bb5aba",
+      "description": "The log plugin module provides access to the syslog and libubox ulog APIs.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 12312,
+      "file-size": 4793,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-log-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-nl80211",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "897c4e000b3235d14177f14c3c1a86aeb249c76949d352bfb5d873a07339c656",
+      "description": "The nl80211 plugin provides access to the Linux wireless 802.11 netlink API.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 69661,
+      "file-size": 23973,
+      "depends": [
+        "libc",
+        "libnl-tiny1",
+        "libubox20261103",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-nl80211-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-rtnl",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "823167f2f69add0a0d2a2ea27dae18fee9d3b4d6323d97fe70b7883393626bb0",
+      "description": "The rtnl plugin provides access to the Linux routing netlink API.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 77850,
+      "file-size": 27312,
+      "depends": [
+        "libc",
+        "libnl-tiny1",
+        "libubox20261103",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-rtnl-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-ubus",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "5b4f396b29803ad1cbda9c18b4789cc45350029bdccbe0ac195b4a439f013eff",
+      "description": "The ubus module allows ucode template scripts to enumerate and invoke ubus procedures.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 45105,
+      "file-size": 19062,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubus20261028",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-ubus-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-uci",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "5eaba9c084f30bfcfb9ab2020751212d1cb870a852e3da7ae6965971858f11cd",
+      "description": "The uci module allows templates to read and modify uci configuration.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 20560,
+      "file-size": 8787,
+      "depends": [
+        "libc",
+        "libuci20250120",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-uci-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "ucode-mod-uloop",
+      "version": "2026.10.28~dfc64d41-r1",
+      "hashes": "154f05ba2cf5b44baaecd0a52cd49512ef40f12d15f7588fe345c29f1bbf410a",
+      "description": "The uloop module allows ucode scripts to interact with OpenWrt uloop event loop implementation.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/utils/ucode",
+      "maintainer": "Jo-Philipp Wich <jo@mein.io>",
+      "installed-size": 28714,
+      "file-size": 11502,
+      "depends": [
+        "libc",
+        "libubox20261103",
+        "ucode"
+      ],
+      "provides": [
+        "ucode-mod-uloop-any"
+      ],
+      "tags": [
+        "openwrt:section=lang"
+      ]
+    }, {
+      "name": "uhttpd",
+      "version": "2026.11.05~93b05e0b-r1",
+      "hashes": "8112ccfe2d8e66c26d2b1fd271b158d73f8589f93aaf509c0a4452e23ed9ee76",
+      "description": "uHTTPd is a tiny single threaded HTTP server with TLS, CGI and Lua support. It is intended as a drop-in replacement for the Busybox HTTP daemon.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/network/services/uhttpd",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 75671,
+      "file-size": 33659,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libjson-c5",
+        "libjson-script20261103",
+        "libubox20261103"
+      ],
+      "provides": [
+        "uhttpd-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "uhttpd-mod-ubus",
+      "version": "2026.11.05~93b05e0b-r1",
+      "hashes": "b670261f26985e77678f53ea761e218509f652486e643f9aac532f782ba6430d",
+      "description": "The ubus plugin adds a HTTP/JSON RPC proxy for ubus and publishes the session.* namespace and procedures.",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/network/services/uhttpd",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 20870,
+      "file-size": 10029,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubus20261028",
+        "uhttpd"
+      ],
+      "provides": [
+        "uhttpd-mod-ubus-any"
+      ],
+      "tags": [
+        "openwrt:section=net"
+      ]
+    }, {
+      "name": "urandom-seed",
+      "version": "3",
+      "hashes": "8ef243f171a5d2258a58033ac6d4d5b20f6a6b428dd8ef3454f5561e5aed5c82",
+      "description": "/etc/urandom.seed handling for OpenWrt",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/system/urandom-seed",
+      "url": "https://openwrt.org/",
+      "installed-size": 1400,
+      "file-size": 1541,
+      "depends": [
+        "getrandom",
+        "libc"
+      ],
+      "provides": [
+        "urandom-seed-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "urngd",
+      "version": "2025.10.03~f17e33d9-r1",
+      "hashes": "5dc02e66c7f0935eaa09e75cea464195170bfa39faa64894253459ab416ba9b0",
+      "description": "urngd is OpenWrt's micro non-physical true random number generator based on timing jitter. Using the Jitter RNG core, the rngd provides an entropy source that feeds into the Linux /dev/random device if its entropy runs low. It updates the /dev/random entropy estimator such that the newly provided entropy unblocks /dev/random. The seeding of /dev/random also ensures that /dev/urandom benefits from entropy. Especially during boot time, when the entropy of Linux is low, the Jitter RNGd provides a source of sufficient entropy.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0 BSD-3-Clause",
+      "origin": "feeds/base/system/urngd",
+      "installed-size": 20693,
+      "file-size": 8498,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "urngd-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "usign",
+      "version": "2025.10.03~c4c72b1b-r1",
+      "hashes": "a55071ba5143b01464197ef47599afae6c7f1e73d556e352d057bd07f1161c05",
+      "description": "OpenWrt signature verification utility",
+      "arch": "aarch64_cortex-a53",
+      "license": "ISC",
+      "origin": "feeds/base/system/usign",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 20467,
+      "file-size": 11112,
+      "depends": [
+        "libc",
+        "libubox20261103"
+      ],
+      "provides": [
+        "usign-any"
+      ],
+      "tags": [
+        "openwrt:section=base"
+      ]
+    }, {
+      "name": "video-support",
+      "version": "3",
+      "hashes": "df21606ca46361387052f1117df39be2d61cbd4650dee2c7857bf88ccf7b97e1",
+      "description": "Feature gate for display and video devices. Allocates the video and video-capture groups and installs the hotplug rules which put the DRM character devices and the DMA-BUF heaps into video. A uevent carries no device capabilities, so a V4L2 node is created without a group and handed to v4l-id, which asks the driver and moves it into video-capture when it can capture video, or into video when it cannot. A stateless codec is therefore reachable by a media player holding video, while a camera or an HDMI receiver needs video-capture. A node whose capabilities could not be established stays owned by root, so a failure costs a working decoder rather than exposing a camera.",
+      "arch": "aarch64_cortex-a53",
+      "license": "GPL-2.0-only",
+      "origin": "feeds/base/system/hardware-support",
+      "maintainer": "Daniel Golle <daniel@makrotopia.org>",
+      "installed-size": 8954,
+      "file-size": 4458,
+      "depends": [
+        "libblobmsg-json20261103",
+        "libc",
+        "libubox20261103",
+        "procd"
+      ],
+      "provides": [
+        "video-support-any"
+      ],
+      "tags": [
+        "openwrt:section=hardware"
+      ]
+    }, {
+      "name": "wifi-scripts",
+      "version": "1.0-r5",
+      "hashes": "fe2884fa3357bd7305f76987c9f1fac1bc3f802b18971f5b0c9e8ae81db6c8af",
+      "description": "A set of scripts that handle setup and configuration of Wi-Fi devices.",
+      "arch": "noarch",
+      "license": "GPL-2.0",
+      "origin": "feeds/base/network/config/wifi-scripts",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "installed-size": 326228,
+      "file-size": 82669,
+      "depends": [
+        "libc",
+        "netifd",
+        "ucode",
+        "ucode-mod-digest",
+        "ucode-mod-nl80211",
+        "ucode-mod-rtnl",
+        "ucode-mod-ubus",
+        "ucode-mod-uci"
+      ],
+      "provides": [
+        "wifi-scripts-any"
+      ],
+      "tags": [
+        "openwrt:section=utils"
+      ]
+    }, {
+      "name": "wireless-regdb",
+      "version": "2026.09.03-r1",
+      "hashes": "811d0f279c9ef655a0ea9f8827df1ace33584895a675125b0157d30a9d12587f",
+      "description": "Wireless Regulatory Database",
+      "arch": "noarch",
+      "license": "ISC",
+      "origin": "feeds/base/firmware/wireless-regdb",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://git.kernel.org/pub/scm/linux/kernel/git/wens/wireless-regdb.git/",
+      "installed-size": 6360,
+      "file-size": 3440,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "wireless-regdb-any"
+      ],
+      "tags": [
+        "openwrt:section=firmware"
+      ]
+    }, {
+      "name": "wpad-mbedtls",
+      "version": "2026.08.07~831364bf-r9",
+      "hashes": "b9e678c9525abb14d1173a36bb25f6e0e6172524fa5672b782c0234b28b9ced7",
+      "description": "This package contains a full featured IEEE 802.1x/WPA/EAP/RADIUS Authenticator and Supplicant",
+      "arch": "aarch64_cortex-a53",
+      "license": "BSD-3-Clause",
+      "origin": "feeds/base/network/services/hostapd",
+      "maintainer": "Felix Fietkau <nbd@nbd.name>",
+      "url": "https://w1.fi/",
+      "installed-size": 1992607,
+      "file-size": 974168,
+      "depends": [
+        "hostapd-common=2026.08.07~831364bf-r9",
+        "libblobmsg-json20261103",
+        "libc",
+        "libmbedtls21",
+        "libnl-tiny1",
+        "libubus20261028",
+        "libucode20261009",
+        "libudebug",
+        "ucode",
+        "ucode-mod-fs",
+        "ucode-mod-nl80211",
+        "ucode-mod-rtnl",
+        "ucode-mod-ubus",
+        "ucode-mod-uloop"
+      ],
+      "provides": [
+        "hostapd=2026.08.07~831364bf-r9",
+        "wpa-supplicant=2026.08.07~831364bf-r9",
+        "wpad-mbedtls-any"
+      ],
+      "tags": [
+        "openwrt:section=net",
+        "openwrt:cpe=cpe:/a:w1.fi:hostapd"
+      ]
+    }, {
+      "name": "zlib",
+      "version": "2.3.3-r2",
+      "hashes": "5dac46971e6c448d4a909b4d72003ec7ef3c9e6c0e90b597046b6dbaaf492898",
+      "description": "zlib is a lossless data-compression library. This package builds zlib-ng with the zlib-compatible API and ABI. This package includes the shared library.",
+      "arch": "aarch64_cortex-a53",
+      "license": "Zlib",
+      "origin": "feeds/base/libs/zlib",
+      "url": "https://github.com/zlib-ng/zlib-ng",
+      "installed-size": 110773,
+      "file-size": 61411,
+      "depends": [
+        "libc"
+      ],
+      "provides": [
+        "zlib-any"
+      ],
+      "tags": [
+        "openwrt:section=libs",
+        "openwrt:cpe=cpe:/a:zlib-ng:zlib-ng"
+      ]
+    }
+  ]
+}
