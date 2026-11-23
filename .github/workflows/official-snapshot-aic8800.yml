@@ -1,4 +1,4 @@
-name: Cubie A5E official-base snapshot + AIC8800
+name: Cubie A5E official-base snapshot + AIC8800 (signed bundles)
 
 on:
   push:
@@ -10,6 +10,8 @@ on:
       - 'package/kernel/aic8800/**'
       - 'scripts/build-official-aic8800.sh'
       - 'scripts/check-official-aic8800.py'
+      - 'scripts/prepare-official-aic8800-bundles.sh'
+      - 'scripts/publish-official-aic8800-release.sh'
       - 'target/linux/sunxi/patches-6.18/950-arm64-dts-allwinner-a527-cubie-a5e-wifi-pwrseq.patch'
   workflow_dispatch:
 
@@ -17,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: official-a5e-${{ github.ref }}
-  cancel-in-progress: true
+  group: official-a5e-signed-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-a5e:
@@ -36,13 +38,14 @@ jobs:
           sudo apt-get install -y --no-install-recommends build-essential clang flex bison \
             gawk gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev libelf-dev \
             python3-setuptools python3-dev rsync swig unzip zlib1g-dev file wget zstd \
-            ccache device-tree-compiler mtools fdisk u-boot-tools libxml-parser-perl
+            ccache device-tree-compiler mtools fdisk u-boot-tools libxml-parser-perl e2fsprogs
           # Avoid the host U-Boot dtc/libyaml conflict seen in this repo.
           if dpkg -s libyaml-dev >/dev/null 2>&1; then
             sudo apt-get remove -y libyaml-dev
           fi
       - name: Build pinned sunxi/cortexa53 image with AIC8800 and PM1 pwrseq
         env:
+          APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
           OPENWRT_BUILD_ROOT: ${{ runner.temp }}/a5e-official-build
           OPENWRT_ARTIFACT_ROOT: ${{ github.workspace }}/build-official-a5e
         run: bash scripts/build-official-aic8800.sh pwrseq-950
@@ -54,6 +57,22 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+      - name: Upload matching ImageBuilder
+        uses: actions/upload-artifact@v4
+        with:
+          name: a5e-r38527-imagebuilder
+          path: build-official-a5e/imagebuilder/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+      - name: Upload exact signed APK feed
+        uses: actions/upload-artifact@v4
+        with:
+          name: a5e-r38527-signed-feed
+          path: build-official-a5e/signed-feed/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
       - name: Upload available build logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,3 +81,35 @@ jobs:
           path: ${{ runner.temp }}/a5e-official-build/logs/
           if-no-files-found: ignore
           retention-days: 7
+
+  publish-a5e-prerelease:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/work/a5e-official-snapshot-aic8800' && github.repository == 'Medvedolog/cubie-a5e-openwrt'
+    needs: build-a5e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: a5e-r38527-pwrseq-950-UNTESTED
+          path: verified-build/images
+      - uses: actions/download-artifact@v4
+        with:
+          name: a5e-r38527-imagebuilder
+          path: verified-build/imagebuilder
+      - uses: actions/download-artifact@v4
+        with:
+          name: a5e-r38527-signed-feed
+          path: verified-build/feed
+      - name: Publish immutable signed package feed and a new pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-official-aic8800-release.sh verified-build/images verified-build/imagebuilder verified-build/feed

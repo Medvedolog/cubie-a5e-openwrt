@@ -10,6 +10,21 @@ case "$variant" in
   pwrseq-950|stock-dtb) ;;
   *) echo "expected pwrseq-950 or stock-dtb" >&2; exit 2 ;;
 esac
+: "${APK_SIGN_KEY:?Existing APK_SIGN_KEY is required for this signed build}"
+[[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
+[[ "${GITHUB_REPOSITORY:-}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+[[ "${GITHUB_RUN_ID:-}" =~ ^[0-9]+$ && "${GITHUB_RUN_ATTEMPT:-}" =~ ^[1-9][0-9]*$ ]]
+[[ "$(git -C "$repo" rev-parse HEAD)" == "$GITHUB_SHA" ]] || {
+  echo "APK feed identity must match the checked-out project commit" >&2
+  exit 2
+}
+[[ "$variant" == pwrseq-950 ]] || {
+  echo "the signed GitHub build is only for the pwrseq-950 variant" >&2
+  exit 2
+}
+feed_tag="cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+feed_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apk-feed/${feed_tag}/packages.adb"
+
 root=${OPENWRT_BUILD_ROOT:-"$repo/build-official-openwrt"}
 artifacts=${OPENWRT_ARTIFACT_ROOT:-"$repo/build-official-a5e"}
 jobs=${JOBS:-$(nproc)}
@@ -20,7 +35,7 @@ artifacts=$(cd "$artifacts" && pwd)
 src="$root/src"
 logs="$root/logs"
 out="$artifacts/$variant"
-if [[ -e "$src" || -e "$out" ]]; then
+if [[ -e "$src" || -e "$out" || -e "$artifacts/signed-feed" || -e "$artifacts/imagebuilder" ]]; then
   echo "refusing overwrite; choose empty build/artifact directories" >&2
   exit 2
 fi
@@ -34,6 +49,39 @@ git -C "$src" fetch --no-tags --depth 1 origin "$upstream"
 git -C "$src" checkout -q --detach FETCH_HEAD
 test "$(git -C "$src" rev-parse HEAD)" = "$upstream"
 cd "$src"
+(umask 077; printf '%s\n' "$APK_SIGN_KEY" >private-key.pem)
+unset APK_SIGN_KEY
+trap 'rm -f "$src/private-key.pem"' EXIT
+# Build host never writes the private project key to logs or artifacts.
+openssl ec -in private-key.pem -check -noout >/dev/null 2>&1
+openssl ec -in private-key.pem -pubout >public-key.pem 2>/dev/null
+openssl ec -pubin -in public-key.pem -text -noout | grep -Eq 'ASN1 OID: prime256v1$'
+# Override the generator used by both base-files and the non-standalone
+# ImageBuilder so neither can silently pull kmods from a rolling Snapshot.
+python3 - "$feed_url" <<'OPENWRT_PATCH'
+from pathlib import Path
+import re
+import sys
+
+feeds = Path("include/feeds.mk")
+source = feeds.read_text()
+def new_repo(_):
+    return ("define FeedSourcesAppendAPK\n"
+            "( echo '" + sys.argv[1] + "' ) >> $(1)\nendef")
+source, n = re.subn(r"^define FeedSourcesAppendAPK\n.*?^endef$", new_repo,
+                    source, flags=re.M | re.S)
+if n != 1:
+    raise SystemExit("Upstream APK feed generator changed")
+feeds.write_text(source)
+profile = Path("target/linux/sunxi/image/cortexa53.mk")
+source = profile.read_text()
+replacement = r"\1  DEVICE_PACKAGES += kmod-aic8800-sdio aic8800-sdio-firmware wpad-mbedtls -wpad-basic-mbedtls\n\2"
+source, n = re.subn(r"(^define Device/radxa_cubie-a5e\n.*?)(^endef$)", replacement,
+                    source, flags=re.M | re.S)
+if n != 1:
+    raise SystemExit("Upstream Cubie A5E profile changed")
+profile.write_text(source)
+OPENWRT_PATCH
 test ! -e package/kernel/aic8800
 cp -a "$repo/package/kernel/aic8800" package/kernel/
 if [[ "$variant" == pwrseq-950 ]]; then
@@ -60,10 +108,14 @@ make defconfig 2>&1 | tee "$logs/defconfig.log"
 for setting in \
     CONFIG_TARGET_sunxi_cortexa53_DEVICE_radxa_cubie-a5e=y \
     CONFIG_TARGET_ROOTFS_EXT4FS=y CONFIG_TARGET_ROOTFS_SQUASHFS=y \
+    CONFIG_IB=y CONFIG_USE_APK=y CONFIG_SIGNED_PACKAGES=y CONFIG_SIGNATURE_CHECK=y CONFIG_SIGN_EACH_PACKAGE=y \
+    CONFIG_PACKAGE_luci=m CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=m \
+    CONFIG_PACKAGE_kmod-usb-net-cdc-mbim=m CONFIG_PACKAGE_kmod-usb-serial-option=m CONFIG_PACKAGE_kmod-usb-acm=m \
     CONFIG_PACKAGE_kmod-aic8800-sdio=y CONFIG_PACKAGE_aic8800-sdio-firmware=y \
     CONFIG_PACKAGE_wpad-mbedtls=y; do
   grep -Fx "$setting" .config
 done
+grep -Fx '# CONFIG_IB_STANDALONE is not set' .config
 if grep -Fxq CONFIG_AIC8800_SDIO_BT_SUPPORT=y .config; then
   echo "refusing untested SDIO Bluetooth configuration" >&2
   exit 2
@@ -84,7 +136,8 @@ if [[ "$variant" == pwrseq-950 ]]; then
   fi
 fi
 python3 "$repo/scripts/check-official-aic8800.py" "$release" "$variant" \
-  2>&1 | tee "$logs/check-image.log"
+  --feed-url "$feed_url" --public-key "$src/public-key.pem" 2>&1 | tee "$logs/check-image.log"
+bash "$repo/scripts/prepare-official-aic8800-bundles.sh" "$repo" "$artifacts" "$feed_url" "$logs"
 mkdir -p "$out"
 cp "$release"/*radxa_cubie-a5e-{ext4,squashfs}-sdcard.img.gz \
    "$release"/*.manifest "$out/"
@@ -94,6 +147,7 @@ cp .config "$out/config.resolved"
 {
   printf 'upstream_commit=%s\nreference_snapshot=%s\nprofile=radxa_cubie-a5e\nvariant=%s\n' \
     "$upstream" "$reference" "$variant"
+  printf 'feed=%s\n' "$feed_url"
   printf 'project_commit=%s\nhardware_status=NOT_TESTED\n' "$(git -C "$repo" rev-parse HEAD)"
 } >"$out/BUILD-METADATA.txt"
 (cd "$out" && sha256sum *.img.gz *.manifest check-image.log feeds.buildinfo config.resolved \
