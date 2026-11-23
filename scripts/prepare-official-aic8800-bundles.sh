@@ -52,7 +52,9 @@ for entry in entries:
 if actual != indexed:
     raise SystemExit(f"Unindexed APKs: {sorted(actual - indexed)}")
 required = {"kernel", "libc", "base-files", "apk-mbedtls", "wpad-mbedtls",
-            "kmod-aic8800-sdio", "aic8800-sdio-firmware", "luci"}
+            "kmod-aic8800-sdio", "aic8800-sdio-firmware", "luci", "luci-base",
+            "luci-theme-footstrap", "luci-theme-bootstrap", "uhttpd",
+            "aic8800-recovery", "luci-app-a5e-board"}
 if not required <= packages.keys():
     raise SystemExit(f"Missing expected APKs: {sorted(required - packages.keys())}")
 kernel, = packages["kernel"]
@@ -95,7 +97,7 @@ make -C "$ib" image PROFILE=radxa_cubie-a5e ROOTFS_FILESYSTEM=ext4 \
   exit 1
 }
 python3 "$repo/scripts/check-official-aic8800.py" "$ib/bin/targets/sunxi/cortexa53" pwrseq-950 \
-  --filesystem ext4 --feed-url "$feed_url" --public-key "$public_key" \
+  --filesystem ext4 --feed-url "$feed_url" --public-key "$public_key" --require-luci-footstrap --require-aic-recovery --require-board-ui \
   2>&1 | tee "$logs/check-imagebuilder.log"
 cp "${archives[0]}" "$builder/${archives[0]##*/}"
 (cd "$builder" && sha256sum *.tar.zst >SHA256SUMS && sha256sum -c SHA256SUMS)

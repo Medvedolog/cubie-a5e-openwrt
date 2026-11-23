@@ -1,0 +1,15 @@
+{
+	"luci-app-a5e-board": {
+		"description": "Read Cubie A5E temperatures and CPU policies",
+		"read": {
+			"ubus": {
+				"luci.a5e-board": [ "status" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.a5e-board": [ "set_governor", "set_limits" ]
+			}
+		}
+	}
+}

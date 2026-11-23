@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: GPL-2.0-only
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "%.1f °C"
+msgstr "%.1f °C"
+
+msgid "%.3f MHz"
+msgstr "%.3f МГц"
+
+msgid "Another CPU setting is being applied. Try again."
+msgstr "Уже применяется другая настройка процессора. Повторите попытку."
+
+msgid "Board"
+msgstr "Плата"
+
+msgid "Board status is unavailable."
+msgstr "Состояние платы недоступно."
+
+msgid "CPU frequency"
+msgstr "Частота процессора"
+
+msgid "CPU frequency controls are unavailable because the kernel does not expose CPU frequency policies on this board."
+msgstr "Управление частотой недоступно: ядро не предоставляет политики частоты для этой платы."
+
+msgid "CPU status is unavailable."
+msgstr "Состояние процессора недоступно."
+
+msgid "CPUs: %s"
+msgstr "Ядра: %s"
+
+msgid "Choose a governor reported by the kernel."
+msgstr "Выберите регулятор, который предлагает ядро."
+
+msgid "Choose a value"
+msgstr "Выберите значение"
+
+msgid "Choose both frequencies. Minimum must not exceed maximum."
+msgstr "Выберите обе частоты. Минимум не может превышать максимум."
+
+msgid "Current: %s · Limits: %s to %s · Governor: %s"
+msgstr "Сейчас: %s · Пределы: от %s до %s · Регулятор: %s"
+
+msgid "Frequency limits are unavailable: the kernel does not report a writable frequency table for this policy."
+msgstr "Пределы недоступны: ядро не предоставляет таблицу частот для изменения в этой политике."
+
+msgid "Governor"
+msgstr "Регулятор частоты"
+
+msgid "Governor control is unavailable for this policy."
+msgstr "Для этой политики нельзя изменить регулятор."
+
+msgid "Invalid CPU setting."
+msgstr "Недопустимая настройка процессора."
+
+msgid "Maximum"
+msgstr "Максимум"
+
+msgid "Minimum"
+msgstr "Минимум"
+
+msgid "No kernel temperature sensors reported"
+msgstr "Ядро не сообщает о датчиках температуры"
+
+msgid "Set governor"
+msgstr "Применить регулятор"
+
+msgid "Set limits"
+msgstr "Применить пределы"
+
+msgid "Settings apply until reboot. Only values reported by the kernel are available. Thermal protections are unchanged."
+msgstr "Настройки действуют до перезагрузки. Доступны только значения, которые сообщает ядро. Термозащита не меняется."
+
+msgid "Temperature"
+msgstr "Температура"
+
+msgid "That setting is no longer available from the kernel. Reload the page."
+msgstr "Ядро больше не предлагает эту настройку. Обновите страницу."
+
+msgid "The CPU setting was not confirmed."
+msgstr "Изменение настройки процессора не подтверждено."
+
+msgid "The CPU setting was not confirmed. Check permissions and reload the page."
+msgstr "Изменение настройки процессора не подтверждено. Проверьте права доступа и обновите страницу."
+
+msgid "The kernel does not expose CPU frequency policies"
+msgstr "Ядро не предоставляет политики частоты процессора"
+
+msgid "The kernel rejected the change and the previous limits could not be restored. Reload to see the current values."
+msgstr "Ядро отклонило изменение, а прежние пределы восстановить не удалось. Обновите страницу, чтобы увидеть текущие значения."
+
+msgid "The kernel rejected the change."
+msgstr "Ядро отклонило изменение."
+
+msgid "The kernel reported a different governor after the change. Reload to see the current value."
+msgstr "После изменения ядро сообщило другой регулятор. Обновите страницу, чтобы увидеть текущее значение."
+
+msgid "This account has read-only access to CPU settings."
+msgstr "Для этой учётной записи настройки процессора доступны только для просмотра."
+
+msgid "Unavailable"
+msgstr "Недоступно"

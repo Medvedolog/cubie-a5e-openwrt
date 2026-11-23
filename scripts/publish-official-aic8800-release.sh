@@ -21,10 +21,18 @@ shopt -s nullglob
 ext4=("$images/"*radxa_cubie-a5e-ext4-sdcard.img.gz)
 squash=("$images/"*radxa_cubie-a5e-squashfs-sdcard.img.gz)
 ibs=("$builder/"*imagebuilder*.tar.zst)
-[[ ${#ext4[@]} == 1 && ${#squash[@]} == 1 && ${#ibs[@]} == 1 ]] || die 'expected exactly two A5E disk images and one ImageBuilder'
+manifests=("$images/"*radxa_cubie-a5e.manifest)
+[[ ${#ext4[@]} == 1 && ${#squash[@]} == 1 && ${#ibs[@]} == 1 && ${#manifests[@]} == 1 ]] || die 'expected exactly two A5E disk images, one manifest and one ImageBuilder'
+for pkg in luci luci-theme-footstrap luci-theme-bootstrap uhttpd aic8800-recovery luci-app-a5e-board; do
+    grep -Eq "^${pkg} - " "${manifests[0]}" || die "firmware manifest lacks $pkg"
+done
 grep -Fxq "project_commit=$GITHUB_SHA" "$images/BUILD-METADATA.txt"
 grep -Fxq "upstream_commit=$upstream" "$images/BUILD-METADATA.txt"
 grep -Fxq 'variant=pwrseq-950' "$images/BUILD-METADATA.txt"
+grep -Fxq 'luci_default_theme=footstrap' "$images/BUILD-METADATA.txt"
+grep -Fxq 'luci_upstream_commit=256f69627d97f63e9173e2ef213a339e70b4b7a3' "$images/BUILD-METADATA.txt"
+grep -Fxq 'aic_recovery=manual' "$images/BUILD-METADATA.txt"
+grep -Fxq 'luci_board_ui=a5e' "$images/BUILD-METADATA.txt"
 grep -Fxq 'hardware_status=NOT_TESTED' "$images/BUILD-METADATA.txt"
 grep -Fq 'hardware status: NOT_TESTED' "$images/check-image.log"
 grep -Fxq "project_commit=$GITHUB_SHA" "$feed/build-info.txt"
@@ -68,6 +76,9 @@ for p in packages:
         required[p['name']] = n
 if files != {p.name for p in root.glob('*.apk')} or len(required) != 2:
     raise SystemExit('APK set differs from the index or lacks AIC8800')
+if {'luci', 'luci-theme-footstrap', 'luci-theme-bootstrap', 'uhttpd',
+    'aic8800-recovery', 'luci-app-a5e-board'} - {p['name'] for p in packages}:
+    raise SystemExit('APK feed lacks LuCI, its themes, A5E board support or manual recovery')
 allowed = files | {'index.json', 'packages.adb', 'public-key.pem', 'SHA256SUMS', 'build-info.txt'}
 if {p.name for p in root.iterdir()} != allowed:
     raise SystemExit('unrecognized files in feed; refusing to publish')
@@ -108,6 +119,12 @@ cat > "$tmp/notes.md" <<NOTES
 
 Первый запуск: ext4-образ только на запасной microSD. Не использовать для sysupgrade или записи в SPI, eMMC или NVMe. Загрузчик OpenWrt не меняли. Bluetooth не включён.
 
+LuCI уже в образе. После загрузки подключитесь к LAN и откройте http://192.168.1.1/. Тема по умолчанию — Footstrap из официального фида LuCI, Bootstrap тоже установлен. Для первого входа интернет не нужен.
+
+В обзоре LuCI выводятся доступные датчики температуры. Раздел управления CPU показывает частоты и governor, которые сообщает ядро; если оно не предоставляет cpufreq для этой платы, настройки недоступны. Ядро и таблицы напряжений ради этого не менялись.
+
+Ручной Wi-Fi recovery включён без автозапуска. Диагностика: \`aic8800-recover --check\`. Восстановление: \`aic8800-recover --run\` только по кабелю или UART; оно прерывает Wi-Fi. На плате пока не проверено.
+
 В архиве ImageBuilder уже собранные ядро и DTB этой версии. Используйте только [подписанный APK-репозиторий этой сборки]($feed_base/packages.adb), не kmods из официального rolling snapshot. Публичный ключ и SHA-256 файлов приложены.
 
 - OpenWrt: $upstream
@@ -119,7 +136,7 @@ NOTES
 # A unique tag per run/attempt avoids touching any legacy or stable release.
 if gh release view "$tag" -R "$repo" >/dev/null 2>&1; then die 'release exists; refusing overwrite'; fi
 gh release create "$tag" -R "$repo" --draft --prerelease --latest=false \
-    --target "$GITHUB_SHA" --title 'Cubie A5E OpenWrt r38527 + AIC8800 (не проверено на железе)' \
+    --target "$GITHUB_SHA" --title 'Cubie A5E OpenWrt r38527 + AIC8800 + LuCI Footstrap (не проверено на железе)' \
     --notes-file "$tmp/notes.md" "$tmp/up/"*
 gh release view "$tag" -R "$repo" --json assets --jq '.assets[].name' | LC_ALL=C sort > "$tmp/remote-assets"
 (cd "$tmp/up" && printf '%s\n' * | LC_ALL=C sort) > "$tmp/expected-assets"

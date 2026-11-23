@@ -1,0 +1,243 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# Runtime-only control. No shell commands or filesystem paths come from RPC.
+. /usr/share/libubox/jshn.sh
+
+# Private to this script; fixed on the installed router.
+SYS=/sys
+LOCK=/var/lock/luci-a5e-board
+set -f
+
+readval() {
+	[ -r "$1" ] || return 1
+	cat "$1" 2>/dev/null
+}
+
+# Kernel CPU frequencies are positive decimal kHz. The length bound also keeps
+# shell arithmetic, JSON integers and browser numbers well within range.
+freq() {
+	[ "${#1}" -le 9 ] || return 1
+	case "$1" in ''|0*|*[!0-9]*) return 1;; esac
+}
+
+temp() {
+	case "$1" in -*) set -- "${1#-}";; esac
+	case "$1" in ''|*[!0-9]*) return 1;; esac
+	[ "${#1}" -le 8 ]
+}
+
+gov() {
+	[ "${#1}" -le 32 ] || return 1
+	case "$1" in ''|*[!a-zA-Z0-9_-]*) return 1;; esac
+}
+
+id() {
+	case "$1" in "$2"*) set -- "${1#"$2"}";; *) return 1;; esac
+	case "$1" in ''|*[!0-9]*) return 1;; esac
+	[ "${#1}" -le 6 ]
+}
+
+json_f() {
+	local v
+	v=$(readval "$2") && freq "$v" && json_add_int "$1" "$v"
+}
+
+sensor() {
+	local value label
+	value=$(readval "$1") && temp "$value" || return 0
+	label=$(readval "$3") || label="$2"
+	json_add_object ""
+	json_add_string id "$2"
+	json_add_string label "${label:-$2}"
+	json_add_string source "$4"
+	json_add_int millidegrees "$value"
+	json_close_object
+}
+
+status() {
+	local p n src v name h input stem
+	json_init
+	json_add_array temperatures
+	# Globbing is deliberately scoped to kernel-owned entries matching constants.
+	set +f
+	for p in "$SYS"/class/thermal/thermal_zone*; do
+		n=${p##*/}
+		id "$n" thermal_zone || continue
+		sensor "$p/temp" "$n" "$p/type" thermal
+	done
+	for h in "$SYS"/class/hwmon/hwmon*; do
+		id "${h##*/}" hwmon || continue
+		# Skip mirrors under a thermal zone, which already appears above.
+		src=$(readlink -f "$h" 2>/dev/null)
+		case "$src" in */thermal_zone[0-9]*/hwmon*) continue;; esac
+		name=$(readval "$h/name") || name="${h##*/}"
+		for input in "$h"/temp[0-9]*_input; do
+			n=${input##*/}
+			stem=${n%_input}
+			id "$stem" temp || continue
+			sensor "$input" "${h##*/}/$stem" "$h/${stem}_label" "${name:-hwmon}"
+		done
+	done
+	json_close_array
+
+	json_add_array policies
+	for p in "$SYS"/devices/system/cpu/cpufreq/policy*; do
+		n=${p##*/}
+		id "$n" policy && [ -d "$p" ] || continue
+		set -f
+		json_add_object ""
+		json_add_string id "$n"
+		v=$(readval "$p/related_cpus") && json_add_string cpus "$v"
+		json_f current "$p/scaling_cur_freq"
+		json_f min "$p/scaling_min_freq"
+		json_f max "$p/scaling_max_freq"
+		v=$(readval "$p/scaling_governor") && gov "$v" && json_add_string governor "$v"
+		json_add_array governors
+		if [ -w "$p/scaling_governor" ]; then
+			for v in $(readval "$p/scaling_available_governors"); do
+				gov "$v" && json_add_string "" "$v"
+			done
+		fi
+		json_close_array
+		json_add_array frequencies
+		if [ -w "$p/scaling_min_freq" ] && [ -w "$p/scaling_max_freq" ]; then
+			for v in $(readval "$p/scaling_available_frequencies"); do
+				freq "$v" && json_add_int "" "$v"
+			done
+		fi
+		json_close_array
+		json_close_object
+	done
+	set -f
+	json_close_array
+	json_dump
+}
+
+reply() {
+	json_init
+	if [ "$1" = ok ]; then
+		json_add_boolean ok 1
+	else
+		json_add_boolean ok 0
+		json_add_string error "$1"
+	fi
+	json_dump
+}
+
+allowed() {
+	local candidate="$1" v
+	shift
+	for v in "$@"; do
+		[ "$candidate" = "$v" ] && return 0
+	done
+	return 1
+}
+
+write_value() {
+	# Subshell redirection keeps a sysfs error out of the JSON response.
+	(printf '%s\n' "$2" >"$1") 2>/dev/null
+}
+
+# If the new ceiling is below the old floor, lower the floor first.
+# Otherwise write the ceiling first. Never use a made-up intermediate OPP.
+transition() {
+	local p="$1" oldmin="$2" oldmax="$3" low="$4" high="$5"
+	if [ "$oldmin" -gt "$high" ]; then
+		{ [ "$oldmin" -eq "$low" ] || write_value "$p/scaling_min_freq" "$low"; } &&
+		{ [ "$oldmax" -eq "$high" ] || write_value "$p/scaling_max_freq" "$high"; }
+	else
+		{ [ "$oldmax" -eq "$high" ] || write_value "$p/scaling_max_freq" "$high"; } &&
+		{ [ "$oldmin" -eq "$low" ] || write_value "$p/scaling_min_freq" "$low"; }
+	fi
+}
+
+set_governor() {
+	local p="$1" g="$2" opts live
+	gov "$g" && [ -w "$p/scaling_governor" ] || { reply unavailable; return; }
+	opts=$(readval "$p/scaling_available_governors")
+	# Intentional shell word splitting, with filename expansion disabled.
+	allowed "$g" $opts || { reply unavailable; return; }
+	[ "$(readval "$p/scaling_governor")" = "$g" ] && { reply ok; return; }
+	write_value "$p/scaling_governor" "$g" || { reply rejected; return; }
+	live=$(readval "$p/scaling_governor")
+	[ "$live" = "$g" ] && reply ok || reply readback
+}
+
+set_limits() {
+	local p="$1" low="$2" high="$3" opts oldmin oldmax kmin kmax live_min live_max
+	freq "$low" && freq "$high" && [ "$low" -le "$high" ] ||
+		{ reply invalid; return; }
+	[ -w "$p/scaling_min_freq" ] && [ -w "$p/scaling_max_freq" ] ||
+		{ reply unavailable; return; }
+	opts=$(readval "$p/scaling_available_frequencies")
+	allowed "$low" $opts && allowed "$high" $opts || { reply unavailable; return; }
+	kmin=$(readval "$p/cpuinfo_min_freq")
+	kmax=$(readval "$p/cpuinfo_max_freq")
+	oldmin=$(readval "$p/scaling_min_freq")
+	oldmax=$(readval "$p/scaling_max_freq")
+	freq "$kmin" && freq "$kmax" && freq "$oldmin" && freq "$oldmax" &&
+		[ "$oldmin" -le "$oldmax" ] && [ "$low" -ge "$kmin" ] && [ "$high" -le "$kmax" ] ||
+		{ reply unavailable; return; }
+	if transition "$p" "$oldmin" "$oldmax" "$low" "$high" &&
+	   [ "$(readval "$p/scaling_min_freq")" = "$low" ] &&
+	   [ "$(readval "$p/scaling_max_freq")" = "$high" ]; then
+		reply ok
+		return
+	fi
+	# A first write can succeed before the second is rejected; attempt rollback.
+	live_min=$(readval "$p/scaling_min_freq")
+	live_max=$(readval "$p/scaling_max_freq")
+	if freq "$live_min" && freq "$live_max" &&
+	   transition "$p" "$live_min" "$live_max" "$oldmin" "$oldmax" &&
+	   [ "$(readval "$p/scaling_min_freq")" = "$oldmin" ] &&
+	   [ "$(readval "$p/scaling_max_freq")" = "$oldmax" ]; then
+		reply rejected
+	else
+		reply partial
+	fi
+}
+
+dispatch() {
+	local method="$1" payload p key t g low high
+	case "$method" in
+		status) status; return;;
+		set_governor|set_limits) ;;
+		*) return 1;;
+	esac
+	payload=$(cat)
+	[ "${#payload}" -le 1024 ] && json_load "$payload" >/dev/null 2>&1 ||
+		{ reply invalid; return; }
+	json_get_type t policy
+	[ "$t" = string ] && json_get_var key policy && id "$key" policy ||
+		{ reply invalid; return; }
+	p="$SYS/devices/system/cpu/cpufreq/$key"
+	[ -d "$p" ] || { reply unavailable; return; }
+	case "$method" in
+		set_governor)
+			json_get_type t governor
+			[ "$t" = string ] && json_get_var g governor && gov "$g" ||
+				{ reply invalid; return; }
+			;;
+		set_limits)
+			json_get_type t min
+			[ "$t" = int ] && json_get_var low min ||
+				{ reply invalid; return; }
+			json_get_type t max
+			[ "$t" = int ] && json_get_var high max ||
+				{ reply invalid; return; }
+			;;
+	esac
+	mkdir -m 0700 "$LOCK" 2>/dev/null || { reply busy; return; }
+	trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+	trap 'exit 1' HUP INT TERM
+	case "$method" in
+		set_governor) set_governor "$p" "$g";;
+		set_limits) set_limits "$p" "$low" "$high";;
+	esac
+}
+
+case "$1" in
+	list) printf '%s\n' '{"status":{},"set_governor":{"policy":"","governor":""},"set_limits":{"policy":"","min":0,"max":0}}';;
+	call) dispatch "$2";;
+	*) exit 1;;
+esac

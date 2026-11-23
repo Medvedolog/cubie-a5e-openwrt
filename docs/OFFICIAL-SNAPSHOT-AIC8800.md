@@ -15,6 +15,34 @@ not apply it. Use only packages built for the kernel/ABI of the image on
 which they will be installed. The source-build image includes its driver;
 do not mix its kernel modules with the rolling upstream APK feed.
 
+LuCI is included in the firmware and works without a WAN connection.
+On a fresh boot, open `http://192.168.1.1/` from the wired LAN: the default
+theme is Footstrap, built from the pinned OpenWrt LuCI feed
+(`256f69627d97f63e9173e2ef213a339e70b4b7a3`, Apache-2.0).
+Bootstrap is installed as a fallback. The firmware does not run a third-party
+theme installer or add a theme updater feed.
+
+The LuCI overview shows temperatures exposed by the kernel. A5E's DTB
+describes four zones (both CPU clusters, GPU and DDR). The CPU page uses
+the kernel's live cpufreq policies only; the current official-base DTB does
+not define CPU OPPs, so frequency controls may be unavailable. No OPP table
+or thermal limits are copied from Orange Pi Zero 3. Changes, when supported,
+apply at runtime only.
+
+To evaluate a future CPU DVFS port, compare the
+[A523 CPU clock series](https://lore-kernel.gnuweeb.org/linux-devicetree/20261005005036.7fd5e60e@ryzen.lan/T/)
+with the [Cubie A5E vendor board DTS](https://github.com/radxa/allwinner-device/blob/device-a527-v1.4.6/configs/cubie_a5e/linux-5.15/board.dts#L1472-L1478).
+The [Orange Pi 4A port](https://github.com/ut-slayer/orangepi-4a-mainline)
+shows that CPU scaling can work on this SoC family with a patched 6.18,
+not that its voltage table is safe for A5E. Verify the clock driver,
+board-specific supplies and OPPs by silicon variant before testing
+transitions and thermal throttling on spare SD.
+
+The image and matching ImageBuilder include manual Wi-Fi recovery as
+`aic8800-recovery`, with no automatic triggers. Use
+`aic8800-recover --check`, and run `aic8800-recover --run` only from
+UART or wired Ethernet. This can disconnect Wi-Fi and is untested on a board.
+
 ## Bench check
 
 1. Download the ext4 microSD artifact and verify its SHA-256 against the
@@ -22,7 +50,8 @@ do not mix its kernel modules with the rolling upstream APK feed.
    possible, UART connected; leave persistent storage unmodified.
 2. Keep board revision, DRAM, power supply and card fixed. Record five
    cold starts and three software reboots individually for a first pass.
-   Confirm the wired baseline, then SDIO enumeration on `4021000.mmc`,
+   Confirm the wired baseline and LuCI login page using Footstrap without WAN,
+   then SDIO enumeration on `4021000.mmc`,
    firmware initialization, and appearance of a wireless PHY. A PHY
    appearing does not establish that AP or STA works.
 3. Check an isolated WPA2 AP and STA separately using the local regulatory

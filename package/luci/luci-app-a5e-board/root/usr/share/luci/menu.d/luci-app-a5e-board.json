@@ -1,0 +1,8 @@
+{
+	"admin/system/a5e-cpufreq": {
+		"title": "CPU frequency",
+		"order": 65,
+		"action": { "type": "view", "path": "a5e-board/cpufreq" },
+		"depends": { "acl": [ "luci-app-a5e-board" ] }
+	}
+}

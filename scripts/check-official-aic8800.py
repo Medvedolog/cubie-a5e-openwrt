@@ -2,6 +2,7 @@
 import argparse
 import gzip
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -21,7 +22,67 @@ def require(ok, info):
         raise SystemExit(f"image check failed: {info}")
 
 
-def verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key):
+
+LUCI_PACKAGES = {"luci", "luci-base", "uhttpd", "luci-theme-footstrap", "luci-theme-bootstrap"}
+
+
+def verify_luci(ext4):
+    config = command("debugfs", "-R", "cat /etc/config/luci", ext4)
+    # Read the main/core stanza only; the theme registry is populated on boot.
+    main = re.search(r"(?m)^config[ 	]+core[ 	]+'main'[ 	]*\n(.*?)(?=^config[ 	]|\Z)",
+                     config, re.S)
+    require(main is not None, "LuCI main config in firmware")
+    themes = re.findall(r"(?m)^[ 	]*option[ 	]+mediaurlbase[ 	]+'([^']+)'[ 	]*$",
+                        main.group(1))
+    require(themes == ["/luci-static/footstrap"], "Footstrap must be the LuCI default")
+    for theme in ("footstrap", "bootstrap"):
+        for asset in (f"/www/luci-static/{theme}/cascade.css",
+                      f"/usr/share/ucode/luci/template/themes/{theme}/header.ut"):
+            require(bool(command("debugfs", "-R", f"cat {asset}", ext4)), f"missing LuCI asset {asset}")
+    # debugfs returns success even when a requested path does not exist.
+    status = command("debugfs", "-R", "stat /etc/rc.d/S50uhttpd", ext4)
+    require("Type: symlink" in status and "init.d/uhttpd" in status,
+            "uhttpd must be enabled at boot")
+
+
+def verify_aic_recovery(ext4):
+    tool = "/usr/sbin/aic8800-recover"
+    stat = command("debugfs", "-R", f"stat {tool}", ext4)
+    require("Type: regular" in stat and re.search(r"\bMode:\s+0755\b", stat),
+            "manual AIC8800 recovery executable")
+    script = command("debugfs", "-R", f"cat {tool}", ext4)
+    require(all(token in script for token in (". /lib/aic8800.sh", "--check", "--run")),
+            "AIC8800 recovery includes manual check and run commands")
+    require("99-cubie-a5e-test-config" not in script,
+            "AIC8800 recovery must not run legacy first-boot settings")
+    helpers = command("debugfs", "-R", "cat /lib/aic8800.sh", ext4)
+    require("AIC_CONTROLLER=4021000.mmc" in helpers and "aic_no_storage_on_host" in helpers,
+            "AIC8800 recovery must target only the onboard Wi-Fi controller")
+    for path in ("/etc/init.d/aic8800-recover", "/etc/crontabs/aic8800-recover",
+                 "/etc/uci-defaults/99-cubie-a5e-test-config"):
+        inode = subprocess.check_output(
+            ["debugfs", "-R", f"stat {path}", str(ext4)], text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        require(not inode, f"unexpected automatic recovery or legacy settings at {path}")
+
+
+def verify_board_ui(ext4):
+    rpc = "/usr/libexec/rpcd/luci.a5e-board"
+    stat = command("debugfs", "-R", f"stat {rpc}", ext4)
+    require("Type: regular" in stat and re.search(r"\bMode:\s+0755\b", stat),
+            "A5E LuCI board RPC executable")
+    for path in ("/usr/share/rpcd/acl.d/luci-app-a5e-board.json",
+                 "/usr/share/luci/menu.d/luci-app-a5e-board.json"):
+        raw = command("debugfs", "-R", f"cat {path}", ext4)
+        require(bool(raw) and isinstance(json.loads(raw), dict), f"A5E board UI data missing at {path}")
+    for path in ("/www/luci-static/resources/view/status/include/15_a5e_board.js",
+                 "/www/luci-static/resources/view/a5e-board/cpufreq.js"):
+        require(bool(command("debugfs", "-R", f"cat {path}", ext4)), f"missing A5E board view {path}")
+
+
+def verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key,
+                  require_luci=False, require_recovery=False, require_board=False):
     ext4 = tmp / "root.ext4"
     # Avoid copying any padding or data past the root partition.
     with disk.open("rb") as read, ext4.open("wb") as write:
@@ -43,9 +104,16 @@ def verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key):
     defaults = command("debugfs", "-R", "cat /etc/apk/repositories.d/customfeeds.list", ext4)
     require(not any(line.strip() and not line.lstrip().startswith("#")
                     for line in defaults.splitlines()), "no unexpected additional feed")
+    if require_luci:
+        verify_luci(ext4)
+    if require_recovery:
+        verify_aic_recovery(ext4)
+    if require_board:
+        verify_board_ui(ext4)
 
 
-def verify(image, variant, feed_url=None, public_key=None):
+def verify(image, variant, feed_url=None, public_key=None, require_luci=False,
+           require_recovery=False, require_board=False):
     with tempfile.TemporaryDirectory(prefix="cubie-a5e-image-") as folder:
         tmp = Path(folder)
         disk, fit, dtb = [tmp / name for name in ("disk.img", "uImage", "board.dtb")]
@@ -84,8 +152,15 @@ def verify(image, variant, feed_url=None, public_key=None):
             require(not ({"mmc-pwrseq", "vqmmc-supply"} & props),
                     "stock DTB must lack custom SDIO power properties")
         if feed_url and image.name.endswith("-ext4-sdcard.img.gz"):
-            verify_rootfs(disk, tmp, root, table.get("sectorsize", 512), feed_url, public_key)
+            verify_rootfs(disk, tmp, root, table.get("sectorsize", 512),
+                          feed_url, public_key, require_luci, require_recovery, require_board)
             print(f"PASS {image.name}: immutable APK feed and matching public key in ext4 rootfs")
+            if require_luci:
+                print(f"PASS {image.name}: LuCI starts with Footstrap default and Bootstrap available")
+            if require_recovery:
+                print(f"PASS {image.name}: manual-only AIC8800 recovery present")
+            if require_board:
+                print(f"PASS {image.name}: A5E CPU and temperature LuCI board UI present")
         print(f"PASS {image.name}: {variant} FIT, SDIO host limited to 35 MHz")
 
 
@@ -96,12 +171,17 @@ def main():
     parser.add_argument("--filesystem", choices=("ext4", "squashfs"), action="append")
     parser.add_argument("--feed-url")
     parser.add_argument("--public-key", type=Path)
+    parser.add_argument("--require-luci-footstrap", action="store_true")
+    parser.add_argument("--require-aic-recovery", action="store_true")
+    parser.add_argument("--require-board-ui", action="store_true")
     args = parser.parse_args()
     if bool(args.feed_url) != bool(args.public_key):
         parser.error("--feed-url and --public-key must be set together")
     filesystems = args.filesystem or ("ext4", "squashfs")
     if args.feed_url and "ext4" not in filesystems:
         parser.error("signed feed verification requires the ext4 image")
+    if (args.require_luci_footstrap or args.require_aic_recovery or args.require_board_ui) and not args.feed_url:
+        parser.error("LuCI and recovery checks require signed ext4 rootfs verification")
     device = list(args.build_output.glob("*-radxa_cubie-a5e.manifest"))
     common = list(args.build_output.glob("*-sunxi-cortexa53.manifest"))
     candidates = device or common
@@ -109,10 +189,17 @@ def main():
     manifest = candidates[0]
     packages = {line.split()[0] for line in manifest.read_text().splitlines() if line.split()}
     expected = {"kmod-aic8800-sdio", "aic8800-sdio-firmware", "wpad-mbedtls"}
+    if args.require_luci_footstrap:
+        expected |= LUCI_PACKAGES
+    if args.require_aic_recovery:
+        expected.add("aic8800-recovery")
+    if args.require_board_ui:
+        expected.add("luci-app-a5e-board")
     require(expected <= packages, f"missing packages: {sorted(expected-packages)}")
     for fs in filesystems:
         image, = args.build_output.glob(f"*radxa_cubie-a5e-{fs}-sdcard.img.gz")
-        verify(image, args.variant, args.feed_url, args.public_key)
+        verify(image, args.variant, args.feed_url, args.public_key,
+               args.require_luci_footstrap, args.require_aic_recovery, args.require_board_ui)
     print("PASS image structure and package manifest; hardware status: NOT_TESTED")
 
 
