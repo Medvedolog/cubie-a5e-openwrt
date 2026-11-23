@@ -1,0 +1,437 @@
+From: cubie-a5e-openwrt <noreply@github.com>
+Subject: cpufreq: dt: gate the Cubie A5E partial-OPP bench
+
+Use cpufreq-dt for an explicitly enabled Cubie A5E bench with OPPs
+only on the fast cluster. Leave other machines on the generic probe
+path. Keep the core's initial-frequency check and validate the actual
+running clock against the admitted table before registering a policy.
+Require a built-in powersave default and a CPU supply.
+
+Do not add a speculative boot-rate OPP. At opt-in only, allow one
+downclock from exactly 768 to the audited 408 MHz at the existing
+fast-CPU regulator setpoint, gated on voltage, exact rounding and live
+readback; fail closed on any mismatch. Otherwise only admit an already
+listed clock. Clock writes during OPP changes also require verified
+voltage before the write and exact live readback before a rail drop.
+
+This is an experimental port, not electrical/hardware validation.
+---
+ drivers/cpufreq/cpufreq-dt-platdev.c |  26 ++++
+ drivers/cpufreq/cpufreq-dt.c         | 247 ++++++++++++++++++++++++++++++++++-
+ drivers/cpufreq/cpufreq-dt.h         |   3 +
+ 3 files changed, 272 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/cpufreq/cpufreq-dt-platdev.c b/drivers/cpufreq/cpufreq-dt-platdev.c
+index 47dd76a..1d83ab7 100644
+--- a/drivers/cpufreq/cpufreq-dt-platdev.c
++++ b/drivers/cpufreq/cpufreq-dt-platdev.c
+@@ -8,6 +8,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/platform_device.h>
++#include <linux/string.h>
+ 
+ #include "cpufreq-dt.h"
+ 
+@@ -220,6 +221,23 @@ static bool __init cpu0_node_has_opp_v2_prop(void)
+ 	return ret;
+ }
+ 
++/*
++ * Experimental only. An absent or invalid kernel parameter must not create a
++ * cpufreq device for A5E, even if its DTB already contains the bench OPP table.
++ */
++static bool a5e_dvfs_enabled __initdata;
++
++static int __init a5e_dvfs_setup(char *value)
++{
++	a5e_dvfs_enabled = value && !strcmp(value, "1");
++	return 0;
++}
++early_param("a5e_dvfs", a5e_dvfs_setup);
++
++static const struct cpufreq_dt_platform_data a5e_dvfs_data __initconst = {
++	.a5e_dvfs_bench = true,
++};
++
+ static int __init cpufreq_dt_platdev_init(void)
+ {
+ 	struct device_node *np __free(device_node) = of_find_node_by_path("/");
+@@ -229,6 +247,14 @@ static int __init cpufreq_dt_platdev_init(void)
+ 	if (!np)
+ 		return -ENODEV;
+ 
++	if (of_device_is_compatible(np, A5E_DVFS_COMPATIBLE)) {
++		if (!a5e_dvfs_enabled)
++			return -ENODEV;
++
++		data = &a5e_dvfs_data;
++		goto create_pdev;
++	}
++
+ 	match = of_match_node(allowlist, np);
+ 	if (match) {
+ 		data = match->data;
+diff --git a/drivers/cpufreq/cpufreq-dt.c b/drivers/cpufreq/cpufreq-dt.c
+index 7d5079f..8f33a73 100644
+--- a/drivers/cpufreq/cpufreq-dt.c
++++ b/drivers/cpufreq/cpufreq-dt.c
+@@ -31,6 +31,7 @@ struct private_data {
+ 	struct device *cpu_dev;
+ 	struct cpufreq_frequency_table *freq_table;
+ 	bool have_static_opps;
++	bool a5e_bench;
+ 	int opp_token;
+ };
+ 
+@@ -80,6 +81,152 @@ static const char *find_supply_name(struct device *dev)
+ 	return NULL;
+ }
+ 
++static bool a5e_dvfs_has_opp(struct private_data *priv, unsigned long rate)
++{
++	struct cpufreq_frequency_table *entry;
++
++	cpufreq_for_each_valid_entry(entry, priv->freq_table) {
++		if (entry->frequency == rate)
++			return true;
++	}
++	return false;
++}
++
++static int a5e_dvfs_check_boot_opp(struct private_data *priv, struct clk *clk)
++{
++	unsigned long rate = clk_get_rate(clk) / 1000;
++
++	if (rate && a5e_dvfs_has_opp(priv, rate))
++		return 0;
++
++	dev_warn(priv->cpu_dev,
++		 "A5E DVFS disabled: running clock %lu kHz is not in the admitted OPP table\n",
++		 rate);
++	return -ENODEV;
++}
++
++#define A5E_HANDOFF_HZ	768000000UL
++#define A5E_FIRST_OPP_HZ	408000000UL
++#define A5E_FIRST_MIN_UV	900000
++#define A5E_PROVEN_MAX_UV	1050000
++
++static bool a5e_dvfs_rail_ok(int voltage, unsigned long minimum)
++{
++	return minimum >= A5E_FIRST_MIN_UV && minimum <= A5E_PROVEN_MAX_UV &&
++	       voltage >= 0 && (unsigned long)voltage >= minimum &&
++	       voltage <= A5E_PROVEN_MAX_UV;
++}
++
++static int a5e_dvfs_config_opp_clock(struct device *dev, struct opp_table *table,
++				     struct dev_pm_opp *old_opp, struct dev_pm_opp *opp,
++				     void *data, bool scaling_down)
++{
++	struct regulator *rail;
++	struct clk *clk;
++	unsigned long target, minimum;
++	int ret;
++
++	if (!opp)
++		return -EINVAL;
++	target = dev_pm_opp_get_freq(opp);
++	minimum = dev_pm_opp_get_voltage(opp);
++	if (!target || (data && *(unsigned long *)data != target))
++		return -EINVAL;
++
++	clk = clk_get(dev, NULL);
++	if (IS_ERR(clk))
++		return PTR_ERR(clk);
++	rail = regulator_get_optional(dev, "cpu");
++	if (IS_ERR(rail)) {
++		ret = PTR_ERR(rail);
++		goto put_clk;
++	}
++
++	/*
++	 * The OPP core orders an increase of voltage before an upclock.
++	 * Do not trust a stale software OPP, e.g. after a failed regulator
++	 * update. Also verify the actual clock before allowing a voltage
++	 * drop: clk_change_rate() can ignore provider set_rate failures.
++	 */
++	ret = -EIO;
++	if (!a5e_dvfs_rail_ok(regulator_get_voltage(rail), minimum) ||
++	    clk_round_rate(clk, target) != (long)target)
++		goto put_rail;
++
++	ret = clk_set_rate(clk, target);
++	if (!ret && (clk_get_rate(clk) != target ||
++		     !a5e_dvfs_rail_ok(regulator_get_voltage(rail), minimum)))
++		ret = -EIO;
++
++put_rail:
++	regulator_put(rail);
++put_clk:
++	clk_put(clk);
++	if (ret)
++		dev_err(dev, "A5E DVFS: %lu Hz not confirmed; aborting transition: %d\n",
++			target, ret);
++	return ret;
++}
++
++static int a5e_dvfs_prepare_boot_opp(struct private_data *priv, struct clk *clk)
++{
++	struct device *dev = priv->cpu_dev;
++	unsigned long rate = clk_get_rate(clk);
++	struct regulator *rail;
++	int before, after, ret;
++
++	if (rate && a5e_dvfs_has_opp(priv, rate / 1000))
++		return 0;
++
++	/*
++	 * No OPP is claimed for 768 MHz. On the explicitly enabled A5E
++	 * fast cluster only, admit a one-time downward clock transition to
++	 * the audited 408 MHz point at the existing regulator setpoint.
++	 * A failed or ambiguous transition must not reach CPUFreq core.
++	 */
++	if (rate != A5E_HANDOFF_HZ ||
++	    !a5e_dvfs_has_opp(priv, A5E_FIRST_OPP_HZ / 1000) ||
++	    clk_round_rate(clk, A5E_FIRST_OPP_HZ) != A5E_FIRST_OPP_HZ ||
++	    clk_round_rate(clk, A5E_HANDOFF_HZ) != A5E_HANDOFF_HZ)
++		return a5e_dvfs_check_boot_opp(priv, clk);
++
++	rail = regulator_get_optional(dev, "cpu");
++	if (IS_ERR(rail))
++		return dev_err_probe(dev, PTR_ERR(rail),
++				     "A5E DVFS disabled: cannot read fast CPU rail\n");
++
++	before = regulator_get_voltage(rail);
++	if (!a5e_dvfs_rail_ok(before, A5E_FIRST_MIN_UV)) {
++		dev_warn(dev, "A5E DVFS disabled: fast CPU rail %d uV not in bench range\n",
++			 before);
++		ret = -ENODEV;
++		goto put_rail;
++	}
++
++	/* No regulator voltage is written here. */
++	ret = clk_set_rate(clk, A5E_FIRST_OPP_HZ);
++	rate = clk_get_rate(clk);
++	after = regulator_get_voltage(rail);
++	if (!ret && rate == A5E_FIRST_OPP_HZ && after == before) {
++		dev_info(dev, "A5E DVFS: admitted 408 MHz at unchanged %d uV setpoint\n",
++			 before);
++		goto put_rail;
++	}
++
++	/* Never raise the clock when the original setpoint cannot be verified. */
++	if (rate && rate != A5E_HANDOFF_HZ && after == before) {
++		ret = clk_set_rate(clk, A5E_HANDOFF_HZ);
++		if (ret || clk_get_rate(clk) != A5E_HANDOFF_HZ)
++			dev_warn(dev, "A5E DVFS: unable to restore original fast CPU clock\n");
++	}
++	dev_warn(dev, "A5E DVFS disabled: initial fast CPU downclock not confirmed\n");
++	ret = -ENODEV;
++
++put_rail:
++	regulator_put(rail);
++	return ret;
++}
++
+ static int cpufreq_init(struct cpufreq_policy *policy)
+ {
+ 	struct private_data *priv;
+@@ -90,6 +237,8 @@ static int cpufreq_init(struct cpufreq_policy *policy)
+ 
+ 	priv = cpufreq_dt_find_data(policy->cpu);
+ 	if (!priv) {
++		if (of_machine_is_compatible(A5E_DVFS_COMPATIBLE))
++			return -ENODEV;
+ 		pr_err("failed to find data for cpu%d\n", policy->cpu);
+ 		return -ENODEV;
+ 	}
+@@ -102,6 +251,14 @@ static int cpufreq_init(struct cpufreq_policy *policy)
+ 		return ret;
+ 	}
+ 
++	if (priv->a5e_bench) {
++		ret = a5e_dvfs_check_boot_opp(priv, cpu_clk);
++		if (ret) {
++			clk_put(cpu_clk);
++			return ret;
++		}
++	}
++
+ 	transition_latency = dev_pm_opp_get_max_transition_latency(cpu_dev);
+ 	if (!transition_latency)
+ 		transition_latency = CPUFREQ_DEFAULT_TRANSITION_LATENCY_NS;
+@@ -153,12 +310,19 @@ static struct cpufreq_driver dt_cpufreq_driver = {
+ 	.suspend = cpufreq_generic_suspend,
+ };
+ 
+-static int dt_cpufreq_early_init(struct device *dev, int cpu)
++static int dt_cpufreq_early_init(struct device *dev, int cpu, bool a5e_bench)
+ {
+ 	struct private_data *priv;
++	struct clk *clk;
+ 	struct device *cpu_dev;
+ 	bool fallback = false;
+ 	const char *reg_name[] = { NULL, NULL };
++	static const char * const a5e_clocks[] = { NULL, NULL };
++	struct dev_pm_opp_config a5e_opp_config = {
++		.clk_names = a5e_clocks,
++		.config_clks = a5e_dvfs_config_opp_clock,
++		.regulator_names = reg_name,
++	};
+ 	int ret;
+ 
+ 	/* Check if this CPU is already covered by some other policy */
+@@ -178,14 +342,22 @@ static int dt_cpufreq_early_init(struct device *dev, int cpu)
+ 
+ 	cpumask_set_cpu(cpu, priv->cpus);
+ 	priv->cpu_dev = cpu_dev;
++	priv->a5e_bench = a5e_bench;
+ 
+ 	/*
+ 	 * OPP layer will be taking care of regulators now, but it needs to know
+ 	 * the name of the regulator first.
+ 	 */
+ 	reg_name[0] = find_supply_name(cpu_dev);
++	if (a5e_bench && !reg_name[0]) {
++		ret = dev_err_probe(cpu_dev, -EINVAL, "no A5E bench CPU supply\n");
++		goto free_cpumask;
++	}
+ 	if (reg_name[0]) {
+-		priv->opp_token = dev_pm_opp_set_regulators(cpu_dev, reg_name);
++		if (a5e_bench)
++			priv->opp_token = dev_pm_opp_set_config(cpu_dev, &a5e_opp_config);
++		else
++			priv->opp_token = dev_pm_opp_set_regulators(cpu_dev, reg_name);
+ 		if (priv->opp_token < 0) {
+ 			ret = dev_err_probe(cpu_dev, priv->opp_token,
+ 					    "failed to set regulators\n");
+@@ -196,7 +368,7 @@ static int dt_cpufreq_early_init(struct device *dev, int cpu)
+ 	/* Get OPP-sharing information from "operating-points-v2" bindings */
+ 	ret = dev_pm_opp_of_get_sharing_cpus(cpu_dev, priv->cpus);
+ 	if (ret) {
+-		if (ret != -ENOENT)
++		if (ret != -ENOENT || a5e_bench)
+ 			goto out;
+ 
+ 		/*
+@@ -208,6 +380,11 @@ static int dt_cpufreq_early_init(struct device *dev, int cpu)
+ 			fallback = true;
+ 	}
+ 
++	if (a5e_bench && cpumask_weight(priv->cpus) != 4) {
++		ret = -EINVAL;
++		goto out;
++	}
++
+ 	/*
+ 	 * Initialize OPP tables for all priv->cpus. They will be shared by
+ 	 * all CPUs which have marked their CPUs shared with OPP bindings.
+@@ -251,9 +428,24 @@ static int dt_cpufreq_early_init(struct device *dev, int cpu)
+ 		goto out;
+ 	}
+ 
++	/* Stop before the core can manage a policy or change its clock. */
++	if (a5e_bench) {
++		clk = clk_get(cpu_dev, NULL);
++		if (IS_ERR(clk)) {
++			ret = PTR_ERR(clk);
++			goto free_freq_table;
++		}
++		ret = a5e_dvfs_prepare_boot_opp(priv, clk);
++		clk_put(clk);
++		if (ret)
++			goto free_freq_table;
++	}
++
+ 	list_add(&priv->node, &priv_list);
+ 	return 0;
+ 
++free_freq_table:
++	dev_pm_opp_free_cpufreq_table(cpu_dev, &priv->freq_table);
+ out:
+ 	if (priv->have_static_opps)
+ 		dev_pm_opp_of_cpumask_remove_table(priv->cpus);
+@@ -277,18 +469,65 @@ static void dt_cpufreq_release(void)
+ 	}
+ }
+ 
++static int a5e_dvfs_validate_topology(void)
++{
++	int cpu;
++
++	/* Validate all present CPU OPP attachments before touching any clock. */
++	for_each_present_cpu(cpu) {
++		struct device_node *np __free(device_node) = of_cpu_device_node_get(cpu);
++		u64 hwid;
++
++		if (!np)
++			return -ENODEV;
++		if (!of_property_present(np, "operating-points-v2"))
++			continue;
++		hwid = of_get_cpu_hwid(np, 0);
++		if (hwid < 0x400 || hwid > 0x700 || (hwid & 0xff))
++			return -EINVAL;
++	}
++	return 0;
++}
++
+ static int dt_cpufreq_probe(struct platform_device *pdev)
+ {
+ 	struct cpufreq_dt_platform_data *data = dev_get_platdata(&pdev->dev);
++	bool a5e_bench = of_machine_is_compatible(A5E_DVFS_COMPATIBLE);
+ 	int ret, cpu;
+ 
++	if (a5e_bench) {
++		if (!data || !data->a5e_dvfs_bench)
++			return -ENODEV;
++		if (!IS_ENABLED(CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE))
++			return dev_err_probe(&pdev->dev, -EINVAL,
++					     "A5E DVFS bench requires a built-in powersave default\n");
++		ret = a5e_dvfs_validate_topology();
++		if (ret)
++			return dev_err_probe(&pdev->dev, ret, "invalid A5E DVFS CPU topology\n");
++	}
++
+ 	/* Request resources early so we can return in case of -EPROBE_DEFER */
+ 	for_each_present_cpu(cpu) {
+-		ret = dt_cpufreq_early_init(&pdev->dev, cpu);
++		if (a5e_bench) {
++			struct device_node *np __free(device_node) = of_cpu_device_node_get(cpu);
++
++			if (!np) {
++				ret = -ENODEV;
++				goto err;
++			}
++			if (!of_property_present(np, "operating-points-v2"))
++				continue;
++		}
++		ret = dt_cpufreq_early_init(&pdev->dev, cpu, a5e_bench);
+ 		if (ret)
+ 			goto err;
+ 	}
+ 
++	if (a5e_bench && list_empty(&priv_list)) {
++		ret = -ENODEV;
++		goto err;
++	}
++
+ 	if (data) {
+ 		if (data->have_governor_per_policy)
+ 			dt_cpufreq_driver.flags |= CPUFREQ_HAVE_GOVERNOR_PER_POLICY;
+diff --git a/drivers/cpufreq/cpufreq-dt.h b/drivers/cpufreq/cpufreq-dt.h
+index fc1889a..1255299 100644
+--- a/drivers/cpufreq/cpufreq-dt.h
++++ b/drivers/cpufreq/cpufreq-dt.h
+@@ -11,8 +11,11 @@
+ 
+ struct cpufreq_policy;
+ 
++#define A5E_DVFS_COMPATIBLE "radxa,cubie-a5e"
++
+ struct cpufreq_dt_platform_data {
+ 	bool have_governor_per_policy;
++	bool a5e_dvfs_bench;
+ 
+ 	unsigned int	(*get_intermediate)(struct cpufreq_policy *policy,
+ 					    unsigned int index);

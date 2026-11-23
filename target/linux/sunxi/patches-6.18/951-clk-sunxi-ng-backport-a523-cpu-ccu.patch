@@ -1,0 +1,426 @@
+From: Andre Przywara <andre.przywara@arm.com>
+Subject: [PATCH] clk: sunxi-ng: backport A523 CPU cluster-B CCU for Cubie A5E bench
+
+Narrow upstream v3 CPU clock model to cluster B and the explicit bench boot
+option. Do not write any CPU PLL or mux on probe. Use the documented
+temporary 600 MHz source and require factor commit, lock and mux readback.
+The Radxa BSP confirms direct N encoding and cluster mux P postdivider.
+
+Link: https://lore.kernel.org/linux-sunxi/20260925225112.14081-4-andre.przywara@arm.com/
+Link: https://github.com/radxa/allwinner-bsp/blob/cubie-aiot-v1.4.6/drivers/clk/sunxi-ng/ccu-sun55iw3-displl.c#L81-L96
+---
+diff --git a/Documentation/devicetree/bindings/clock/allwinner,sun55i-a523-ccu.yaml b/Documentation/devicetree/bindings/clock/allwinner,sun55i-a523-ccu.yaml
+index 58be701..8d5481f 100644
+--- a/Documentation/devicetree/bindings/clock/allwinner,sun55i-a523-ccu.yaml
++++ b/Documentation/devicetree/bindings/clock/allwinner,sun55i-a523-ccu.yaml
+@@ -19,6 +19,7 @@ properties:
+   compatible:
+     enum:
+       - allwinner,sun55i-a523-ccu
++      - allwinner,sun55i-a523-cpu-ccu
+       - allwinner,sun55i-a523-mcu-ccu
+       - allwinner,sun55i-a523-r-ccu
+ 
+@@ -35,12 +36,23 @@ properties:
+ 
+ required:
+   - "#clock-cells"
+-  - "#reset-cells"
+   - compatible
+   - reg
+   - clocks
+   - clock-names
+ 
++if:
++  properties:
++    compatible:
++      contains:
++        const: allwinner,sun55i-a523-cpu-ccu
++then:
++  properties:
++    "#reset-cells": false
++else:
++  required:
++    - "#reset-cells"
++
+ allOf:
+   - if:
+       properties:
+@@ -64,6 +76,30 @@ allOf:
+             - const: iosc
+             - const: losc-fanout
+ 
++  - if:
++      properties:
++        compatible:
++          enum:
++            - allwinner,sun55i-a523-cpu-ccu
++
++    then:
++      properties:
++        clocks:
++          items:
++            - description: High Frequency Oscillator (usually at 24MHz)
++            - description: Low Frequency Oscillator (usually at 32kHz)
++            - description: Internal Oscillator
++            - description: Peripherals PLL 0 (1200 MHz output)
++            - description: Peripherals PLL 0 (600 MHz output)
++
++        clock-names:
++          items:
++            - const: hosc
++            - const: losc
++            - const: iosc
++            - const: pll-periph0-2x
++            - const: pll-periph0-600m
++
+   - if:
+       properties:
+         compatible:
+diff --git a/drivers/clk/sunxi-ng/Kconfig b/drivers/clk/sunxi-ng/Kconfig
+index 6af2d02..8b1603e 100644
+--- a/drivers/clk/sunxi-ng/Kconfig
++++ b/drivers/clk/sunxi-ng/Kconfig
+@@ -67,6 +67,10 @@ config SUN55I_A523_R_CCU
+ 	default ARCH_SUNXI
+ 	depends on ARM64 || COMPILE_TEST
+ 
++config SUN55I_A523_CPU_CCU
++	bool "Experimental Allwinner A523/T527 CPU cluster-B CCU support"
++	depends on ARM64 || COMPILE_TEST
++
+ config SUN4I_A10_CCU
+ 	tristate "Support for the Allwinner A10/A20 CCU"
+ 	default ARCH_SUNXI
+diff --git a/drivers/clk/sunxi-ng/Makefile b/drivers/clk/sunxi-ng/Makefile
+index a1c4087..309ff5a 100644
+--- a/drivers/clk/sunxi-ng/Makefile
++++ b/drivers/clk/sunxi-ng/Makefile
+@@ -36,6 +36,7 @@ obj-$(CONFIG_SUN50I_H616_CCU)	+= sun50i-h616-ccu.o
+ obj-$(CONFIG_SUN55I_A523_CCU)	+= sun55i-a523-ccu.o
+ obj-$(CONFIG_SUN55I_A523_MCU_CCU)	+= sun55i-a523-mcu-ccu.o
+ obj-$(CONFIG_SUN55I_A523_R_CCU)	+= sun55i-a523-r-ccu.o
++obj-$(CONFIG_SUN55I_A523_CPU_CCU)	+= sun55i-a523-cpu-ccu.o
+ obj-$(CONFIG_SUN4I_A10_CCU)	+= sun4i-a10-ccu.o
+ obj-$(CONFIG_SUN5I_CCU)		+= sun5i-ccu.o
+ obj-$(CONFIG_SUN6I_A31_CCU)	+= sun6i-a31-ccu.o
+@@ -64,6 +65,7 @@ sun50i-h616-ccu-y		+= ccu-sun50i-h616.o
+ sun55i-a523-ccu-y		+= ccu-sun55i-a523.o
+ sun55i-a523-mcu-ccu-y		+= ccu-sun55i-a523-mcu.o
+ sun55i-a523-r-ccu-y		+= ccu-sun55i-a523-r.o
++sun55i-a523-cpu-ccu-y		+= ccu-sun55i-a523-cpu.o
+ sun4i-a10-ccu-y			+= ccu-sun4i-a10.o
+ sun5i-ccu-y			+= ccu-sun5i.o
+ sun6i-a31-ccu-y			+= ccu-sun6i-a31.o
+diff --git a/drivers/clk/sunxi-ng/ccu-sun55i-a523-cpu.c b/drivers/clk/sunxi-ng/ccu-sun55i-a523-cpu.c
+new file mode 100644
+index 0000000..630d024
+--- /dev/null
++++ b/drivers/clk/sunxi-ng/ccu-sun55i-a523-cpu.c
+@@ -0,0 +1,287 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2023-2025 Arm Ltd.
++ *
++ * Cluster-B-only adaptation of Andre Przywara's A523/T527 CPU CCU.
++ * Leave the other cluster, DSU and their shared supply as set by firmware.
++ */
++
++#include <linux/bitfield.h>
++#include <linux/clk.h>
++#include <linux/clk-provider.h>
++#include <linux/init.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++
++#include <dt-bindings/clock/sun55i-a523-cpu-ccu.h>
++
++#define A523_CPU_B_PLL		0x0c
++#define A523_CPU_B_MUX		0x64
++#define A523_CPU_B_MUX_MASK	GENMASK(26, 24)
++#define A523_CPU_B_MUX_PLL	(3 << 24)
++#define A523_CPU_B_MUX_SAFE	(4 << 24)
++#define A523_CPU_B_PLL_ON	GENMASK(31, 27)
++#define A523_CPU_B_PLL_LOCK	BIT(28)
++#define A523_CPU_B_PLL_UPDATE	BIT(26)
++#define A523_CPU_B_PLL_N		GENMASK(15, 8)
++#define A523_CPU_B_PLL_N_MIN	20
++#define A523_CPU_B_PLL_N_MAX	108
++#define A523_CPU_B_PLL_DIV	(GENMASK(21, 16) | GENMASK(3, 0))
++#define A523_CPU_B_POSTDIV	GENMASK(17, 16)
++#define A523_CPU_SAFE_RATE	600000000
++
++static bool a5e_dvfs_enabled __ro_after_init;
++
++static int __init a5e_dvfs_setup(char *arg)
++{
++	a5e_dvfs_enabled = arg && !strcmp(arg, "1");
++	return 0;
++}
++early_param("a5e_dvfs", a5e_dvfs_setup);
++
++struct a523_cpu_b_ccu {
++	struct device *dev;
++	void __iomem *base;
++	struct clk *safe;
++	struct clk_hw hw;
++	bool failed;
++};
++
++static bool a523_cpu_b_select(struct a523_cpu_b_ccu *ccu, u32 source, u32 p)
++{
++	void __iomem *mux = ccu->base + A523_CPU_B_MUX;
++	u32 mask = A523_CPU_B_MUX_MASK | A523_CPU_B_POSTDIV;
++	u32 val = readl(mux);
++
++	writel((val & ~mask) | source | p, mux);
++	udelay(1);
++
++	return (readl(mux) & mask) == (source | p);
++}
++
++/* Identical N encoding and external P divider to the vendor CPU3 clock. */
++static int a523_cpu_b_factors(unsigned long rate, unsigned long parent,
++			      u32 *n, u32 *p)
++{
++	unsigned long scaled;
++	unsigned int shift;
++
++	if (!parent || rate > parent * A523_CPU_B_PLL_N_MAX)
++		return -EINVAL;
++
++	for (shift = 0; shift <= 3; shift++) {
++		scaled = rate << shift;
++		if (scaled % parent)
++			continue;
++		scaled /= parent;
++		if (scaled < A523_CPU_B_PLL_N_MIN || scaled > A523_CPU_B_PLL_N_MAX)
++			continue;
++		*n = FIELD_PREP(A523_CPU_B_PLL_N, scaled);
++		*p = FIELD_PREP(A523_CPU_B_POSTDIV, shift);
++		return 0;
++	}
++	return -EINVAL;
++}
++
++static int a523_cpu_b_program(struct a523_cpu_b_ccu *ccu, u32 n)
++{
++	void __iomem *reg = ccu->base + A523_CPU_B_PLL;
++	u32 val = readl(reg);
++	int ret;
++
++	writel((val & ~A523_CPU_B_PLL_N) | n | A523_CPU_B_PLL_UPDATE, reg);
++	ret = readl_relaxed_poll_timeout(reg, val, !(val & A523_CPU_B_PLL_UPDATE),
++					 10, 10000);
++	if (ret)
++		return ret;
++
++	ret = readl_relaxed_poll_timeout(reg, val,
++					 (val & A523_CPU_B_PLL_LOCK) &&
++					 (val & A523_CPU_B_PLL_N) == n, 10, 70000);
++	if (!ret)
++		udelay(20);
++	return ret;
++}
++
++static int a523_cpu_b_pll_set_rate(struct clk_hw *hw, unsigned long rate,
++				   unsigned long parent_rate)
++{
++	struct a523_cpu_b_ccu *ccu = container_of(hw, struct a523_cpu_b_ccu, hw);
++	u32 old_pll, old_mux, old_n, old_p, n, p;
++	int ret;
++
++	if (ccu->failed || clk_get_rate(ccu->safe) != A523_CPU_SAFE_RATE)
++		return -EIO;
++
++	ret = a523_cpu_b_factors(rate, parent_rate, &n, &p);
++	if (ret)
++		return ret;
++
++	old_pll = readl(ccu->base + A523_CPU_B_PLL);
++	old_mux = readl(ccu->base + A523_CPU_B_MUX);
++	old_n = old_pll & A523_CPU_B_PLL_N;
++	old_p = old_mux & A523_CPU_B_POSTDIV;
++	if ((old_pll & (A523_CPU_B_PLL_ON | A523_CPU_B_PLL_DIV |
++			A523_CPU_B_PLL_UPDATE)) != A523_CPU_B_PLL_ON ||
++	    (old_mux & A523_CPU_B_MUX_MASK) != A523_CPU_B_MUX_PLL)
++		return -EIO;
++
++	if (!a523_cpu_b_select(ccu, A523_CPU_B_MUX_SAFE, old_p))
++		return -EIO;
++
++	/* Commit and verify P while the independent 600 MHz source is active. */
++	if (!a523_cpu_b_program(ccu, n) &&
++	    a523_cpu_b_select(ccu, A523_CPU_B_MUX_SAFE, p) &&
++	    a523_cpu_b_select(ccu, A523_CPU_B_MUX_PLL, p))
++		return 0;
++
++	/*
++	 * Don't reconnect an unlocked PLL. Restore the last working factors
++	 * only when the safe path verified; if that fails stay on 600 MHz.
++	 */
++	if (a523_cpu_b_select(ccu, A523_CPU_B_MUX_SAFE, old_p) &&
++	    !a523_cpu_b_program(ccu, old_n) &&
++	    a523_cpu_b_select(ccu, A523_CPU_B_MUX_PLL, old_p)) {
++		dev_err(ccu->dev, "CPU cluster-B PLL change failed; restored prior rate\n");
++		return -EIO;
++	}
++
++	ccu->failed = true;
++	if (a523_cpu_b_select(ccu, A523_CPU_B_MUX_SAFE, old_p))
++		dev_crit(ccu->dev, "CPU cluster-B PLL recovery failed; using 600 MHz backup\n");
++	else
++		dev_crit(ccu->dev, "CPU cluster-B mux recovery failed\n");
++
++	return -EIO;
++}
++
++static unsigned long a523_cpu_b_pll_recalc_rate(struct clk_hw *hw,
++					       unsigned long parent_rate)
++{
++	struct a523_cpu_b_ccu *ccu = container_of(hw, struct a523_cpu_b_ccu, hw);
++	u32 mux = readl(ccu->base + A523_CPU_B_MUX);
++	u32 pll = readl(ccu->base + A523_CPU_B_PLL);
++
++	if ((mux & A523_CPU_B_MUX_MASK) == A523_CPU_B_MUX_SAFE)
++		return clk_get_rate(ccu->safe);
++	if ((mux & A523_CPU_B_MUX_MASK) != A523_CPU_B_MUX_PLL ||
++	    (pll & (A523_CPU_B_PLL_ON | A523_CPU_B_PLL_DIV |
++		    A523_CPU_B_PLL_UPDATE)) != A523_CPU_B_PLL_ON)
++		return 0;
++
++	return (parent_rate * FIELD_GET(A523_CPU_B_PLL_N, pll)) >>
++		FIELD_GET(A523_CPU_B_POSTDIV, mux);
++}
++
++static int a523_cpu_b_pll_determine_rate(struct clk_hw *hw,
++					struct clk_rate_request *req)
++{
++	u32 n, p;
++
++	return a523_cpu_b_factors(req->rate, req->best_parent_rate, &n, &p);
++}
++
++static const struct clk_ops a523_cpu_b_pll_ops = {
++	.recalc_rate = a523_cpu_b_pll_recalc_rate,
++	.determine_rate = a523_cpu_b_pll_determine_rate,
++	.set_rate = a523_cpu_b_pll_set_rate,
++};
++
++static int a523_cpu_b_ccu_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct a523_cpu_b_ccu *ccu;
++	struct clk_hw_onecell_data *data;
++	const struct clk_parent_data hosc = { .fw_name = "hosc" };
++	const struct clk_init_data pll_init = {
++		.name = "cpu-b",
++		.ops = &a523_cpu_b_pll_ops,
++		.parent_data = &hosc,
++		.num_parents = 1,
++		.flags = CLK_GET_RATE_NOCACHE,
++	};
++	void __iomem *base;
++	struct clk *osc;
++	u32 pll, mux;
++	int ret;
++
++	if (!a5e_dvfs_enabled ||
++	    !of_machine_is_compatible("radxa,cubie-a5e"))
++		return -ENODEV;
++
++	base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(base))
++		return PTR_ERR(base);
++
++	/*
++	 * Accept only the PLL layout prepared by the mainline bootloader.
++	 * In particular never fix up its prescalers or start a stopped PLL.
++	 */
++	pll = readl(base + A523_CPU_B_PLL);
++	mux = readl(base + A523_CPU_B_MUX);
++	if ((pll & (A523_CPU_B_PLL_ON | A523_CPU_B_PLL_DIV |
++		    A523_CPU_B_PLL_UPDATE)) != A523_CPU_B_PLL_ON ||
++	    (mux & (A523_CPU_B_MUX_MASK | A523_CPU_B_POSTDIV)) != A523_CPU_B_MUX_PLL)
++		return dev_err_probe(dev, -ENODEV,
++				     "unsupported CPU cluster-B boot PLL (pll=%#x mux=%#x)\n",
++				     pll, mux);
++
++	ccu = devm_kzalloc(dev, sizeof(*ccu), GFP_KERNEL);
++	if (!ccu)
++		return -ENOMEM;
++
++	osc = devm_clk_get(dev, "hosc");
++	if (IS_ERR(osc))
++		return dev_err_probe(dev, PTR_ERR(osc), "oscillator unavailable\n");
++	if (clk_get_rate(osc) != 24000000)
++		return dev_err_probe(dev, -ENODEV, "expected 24 MHz oscillator\n");
++
++	ccu->safe = devm_clk_get_enabled(dev, "pll-periph0-600m");
++	if (IS_ERR(ccu->safe))
++		return dev_err_probe(dev, PTR_ERR(ccu->safe), "backup clock unavailable\n");
++	if (clk_get_rate(ccu->safe) != A523_CPU_SAFE_RATE)
++		return dev_err_probe(dev, -ENODEV, "expected 600 MHz backup clock\n");
++
++	ccu->dev = dev;
++	ccu->base = base;
++	ccu->hw.init = &pll_init;
++	ret = devm_clk_hw_register(dev, &ccu->hw);
++	if (ret)
++		return ret;
++
++	/*
++	 * Cluster mux stays on its dedicated PLL unless the PLL set_rate()
++	 * callback temporarily parks it on PLL-PERIPH0 during a change.
++	 * Exposing no mux parent selection also avoids retuning shared clocks.
++	 */
++	data = devm_kzalloc(dev, struct_size(data, hws, CLK_CPU_B + 1), GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++	data->num = CLK_CPU_B + 1;
++	data->hws[CLK_CPU_B] = &ccu->hw;
++
++	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, data);
++}
++
++static const struct of_device_id a523_cpu_b_ccu_ids[] = {
++	{ .compatible = "allwinner,sun55i-a523-cpu-ccu" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, a523_cpu_b_ccu_ids);
++
++static struct platform_driver a523_cpu_b_ccu_driver = {
++	.probe = a523_cpu_b_ccu_probe,
++	.driver = {
++		.name = "sun55i-a523-cpu-ccu",
++		.suppress_bind_attrs = true,
++		.of_match_table = a523_cpu_b_ccu_ids,
++	},
++};
++builtin_platform_driver(a523_cpu_b_ccu_driver);
++
++MODULE_IMPORT_NS("SUNXI_CCU");
++MODULE_DESCRIPTION("Experimental Allwinner A523 CPU cluster-B clock");
++MODULE_LICENSE("GPL");
+diff --git a/include/dt-bindings/clock/sun55i-a523-cpu-ccu.h b/include/dt-bindings/clock/sun55i-a523-cpu-ccu.h
+new file mode 100644
+index 0000000..042f231
+--- /dev/null
++++ b/include/dt-bindings/clock/sun55i-a523-cpu-ccu.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++/*
++ * Copyright 2025 Arm Ltd.
++ */
++
++#ifndef _DT_BINDINGS_CLK_SUN55I_A523_CPU_CCU_H_
++#define _DT_BINDINGS_CLK_SUN55I_A523_CPU_CCU_H_
++
++#define CLK_CPU_L		7
++#define CLK_CPU_DSU		8
++#define CLK_CPU_B		9
++
++#endif /* _DT_BINDINGS_CLK_SUN55I_A523_CPU_CCU_H_ */

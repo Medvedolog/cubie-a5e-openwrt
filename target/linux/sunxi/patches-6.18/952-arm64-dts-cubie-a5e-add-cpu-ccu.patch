@@ -1,0 +1,62 @@
+Subject: [PATCH] arm64: dts: add Cubie A5E experimental cluster-B clock
+
+Adapt upstream A523 CPU CCU DTS to Cubie A5E only. Link CPUs 4–7
+without adding consumers for CPU0–3 or DSU. The clock driver requires
+the explicit a5e_dvfs=1 boot argument.
+
+Link: https://lore.kernel.org/linux-sunxi/20260925225112.14081-5-andre.przywara@arm.com/
+---
+diff --git a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+index 9b85296..59420a3 100644
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -5,6 +5,9 @@
+ 
+ #include "sun55i-a523.dtsi"
+ 
++#include <dt-bindings/clock/sun55i-a523-cpu-ccu.h>
++#include <dt-bindings/clock/sun6i-rtc.h>
++
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/leds/common.h>
+ 
+@@ -24,6 +27,19 @@ aliases {
+ 		led-upgrade = &led_power;
+ 	};
+ 
++	soc {
++		cpu_ccu: clock-controller@8817000 {
++			compatible = "allwinner,sun55i-a523-cpu-ccu";
++			reg = <0x08817000 0x80>;
++			clocks = <&osc24M>, <&rtc CLK_OSC32K>,
++				 <&rtc CLK_IOSC>, <&ccu CLK_PLL_PERIPH0_2X>,
++				 <&ccu CLK_PLL_PERIPH0_600M>;
++			clock-names = "hosc", "losc", "iosc", "pll-periph0-2x",
++				      "pll-periph0-600m";
++			#clock-cells = <1>;
++		};
++	};
++
+ 	chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
+@@ -531,3 +547,19 @@ &usbc1 {
+ 	status = "okay";
+ };
+ 
++
++&cpu4 {
++	clocks = <&cpu_ccu CLK_CPU_B>;
++};
++
++&cpu5 {
++	clocks = <&cpu_ccu CLK_CPU_B>;
++};
++
++&cpu6 {
++	clocks = <&cpu_ccu CLK_CPU_B>;
++};
++
++&cpu7 {
++	clocks = <&cpu_ccu CLK_CPU_B>;
++};

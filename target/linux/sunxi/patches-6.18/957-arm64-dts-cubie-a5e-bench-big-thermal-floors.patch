@@ -1,0 +1,84 @@
+Subject: [BENCH] arm64: dts: allwinner: cool Cubie A5E's bench big-cluster policy
+
+Adapt the two-sensor hard-floor design from Armbian build
+61485f704dd661d8c9e1393ff2ceeda56b6c6725, file
+patch/kernel/archive/sunxi-6.18/patches.armbian/
+arm64-dts-sun55i-a527-cubie-a5e-cpu-thermal-backstop.patch.
+
+The donor's states 4/7 refer to complete, fuse-selected OPP tables.
+This isolated three-OPP big-only test has max cooling state 2, and
+does not own CPU0-3 or DSU. From either sensor start cooling at 85 C
+(state 1, <=1488 MHz) and deepen it at 90 C (state 2, <=408 MHz).
+Keep existing thermal trip points, including critical shutdown.
+These bench trip choices have not been tested on physical hardware.
+
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -539,6 +539,67 @@
+ 	status = "okay";
+ };
+ 
++/*
++ * Bench: CPU4-7 has three OPPs. A floor of cooling state 1 caps it
++ * at 1488 MHz; state 2 caps it at 408 MHz. Either CPU sensor protects
++ * the shared die. Keep existing trips and do not control CPU0-3.
++ */
++&{/thermal-zones/cpu0-thermal} {
++	trips {
++		a5e_cpu0_bench85: cpu-trip-bench85 {
++			temperature = <85000>;
++			hysteresis = <2000>;
++			type = "passive";
++		};
++
++		a5e_cpu0_bench90: cpu-trip-bench90 {
++			temperature = <90000>;
++			hysteresis = <2000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		map-bench85 {
++			trip = <&a5e_cpu0_bench85>;
++			cooling-device = <&cpu4 1 THERMAL_NO_LIMIT>;
++		};
++
++		map-bench90 {
++			trip = <&a5e_cpu0_bench90>;
++			cooling-device = <&cpu4 2 THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu4-thermal} {
++	trips {
++		a5e_cpu4_bench85: cpu-trip-bench85 {
++			temperature = <85000>;
++			hysteresis = <2000>;
++			type = "passive";
++		};
++
++		a5e_cpu4_bench90: cpu-trip-bench90 {
++			temperature = <90000>;
++			hysteresis = <2000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		map-bench85 {
++			trip = <&a5e_cpu4_bench85>;
++			cooling-device = <&cpu4 1 THERMAL_NO_LIMIT>;
++		};
++
++		map-bench90 {
++			trip = <&a5e_cpu4_bench90>;
++			cooling-device = <&cpu4 2 THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
+ &usbc1 {
+ 	device_type = "usbc1";
+ 	usb_regulator_io = "nocare";

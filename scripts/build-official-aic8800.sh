@@ -25,6 +25,14 @@ esac
 }
 feed_tag="cubie-a5e-pkgs-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 feed_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/apk-feed/${feed_tag}/packages.adb"
+bench=${A5E_CPU_DVFS_BENCH:-0}
+case "$bench:${GITHUB_REF:-}" in
+  0:*) ;;
+  1:refs/heads/work/a5e-cpu-dvfs-bench)
+    # No public APK feed for experimental kernel ABI; this artifact is offline.
+    feed_url=file:///tmp/a5e-dvfs-apk/packages.adb ;;
+  *) echo "DVFS bench is restricted to work/a5e-cpu-dvfs-bench" >&2; exit 2 ;;
+esac
 
 root=${OPENWRT_BUILD_ROOT:-"$repo/build-official-openwrt"}
 artifacts=${OPENWRT_ARTIFACT_ROOT:-"$repo/build-official-a5e"}
@@ -131,6 +139,22 @@ if [[ "$variant" == pwrseq-950 ]]; then
   test ! -e "$patch_dir/$patch_name"
   cp "$repo/$patch_dir/$patch_name" "$patch_dir/"
 fi
+if [[ "$bench" == 1 ]]; then
+  # No changes to SPL, U-Boot, TF-A, the little cluster, or the DSU.
+  for prefix in 951 952 954 956 957 959; do
+    bench_patch=("$repo/$patch_dir"/"$prefix"-*.patch)
+    if [[ "${#bench_patch[@]}" != 1 || ! -f "${bench_patch[0]}" ]]; then
+      echo "expected exactly one DVFS bench patch for $prefix" >&2
+      exit 2
+    fi
+    cp -- "${bench_patch[0]}" "$patch_dir/"
+  done
+  sunxi_config=target/linux/sunxi/config-6.18
+  grep -Fxq CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y "$sunxi_config"
+  sed -i '/^CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y$/c\# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set\nCONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE=y' "$sunxi_config"
+  sed -i '/^# CONFIG_CPU_FREQ_THERMAL is not set$/d' "$sunxi_config"
+  printf '%s\n' CONFIG_SUN55I_A523_CPU_CCU=y CONFIG_CPU_FREQ_THERMAL=y >>"$sunxi_config"
+fi
 # Exact official feeds.buildinfo (downloaded and verified on 2026-11-23).
 cp "$repo/config/feeds.official-r38527.conf" feeds.conf
 {
@@ -231,6 +255,15 @@ if [[ "$variant" == pwrseq-950 ]]; then
     echo "RESET_GPIO is incompatible with this three-cell PM1 GPIO sequence" >&2
     exit 2
   fi
+  if [[ "$bench" == 1 ]]; then
+    for setting in CONFIG_SUN55I_A523_CPU_CCU=y CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE=y \
+      CONFIG_CPUFREQ_DT=y CONFIG_CPU_FREQ_THERMAL=y CONFIG_SUN8I_THERMAL=y \
+      CONFIG_THERMAL_GOV_STEP_WISE=y CONFIG_REGULATOR_AXP20X=y; do
+      grep -Fx "$setting" "${kernel_cfg[0]}"
+    done
+    ! grep -Fxq CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y "${kernel_cfg[0]}"
+    python3 "$repo/scripts/check-a5e-dvfs-bench.py" "$release" | tee "$logs/check-dvfs-bench.log"
+  fi
 fi
 python3 "$repo/scripts/check-official-aic8800.py" "$release" "$variant" \
   --feed-url "$feed_url" --public-key "$src/public-key.pem" --require-luci-footstrap --require-aic-recovery --require-board-ui 2>&1 | tee "$logs/check-image.log"
@@ -246,6 +279,9 @@ cp .config "$out/config.resolved"
     "$upstream" "$reference" "$variant"
   printf 'feed=%s\nluci_default_theme=footstrap\nluci_upstream_commit=%s\naic_recovery=manual\nluci_board_ui=a5e\n' "$feed_url" "$luci_revision"
   printf 'project_commit=%s\nhardware_status=NOT_TESTED\n' "$(git -C "$repo" rev-parse HEAD)"
+  if [[ "$bench" == 1 ]]; then
+    printf '%s\n' 'dvfs_scope=big-cluster-opt-in' 'dvfs_deployment=NOT_FOR_DEPLOYMENT' 'dvfs_boot_argument=a5e_dvfs=1'
+  fi
 } >"$out/BUILD-METADATA.txt"
 (cd "$out" && sha256sum *.img.gz *.manifest check-image.log feeds.buildinfo config.resolved \
   BUILD-METADATA.txt >SHA256SUMS && sha256sum -c SHA256SUMS)

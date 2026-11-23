@@ -1,0 +1,71 @@
+Subject: [BENCH] arm64: dts: allwinner: add Cubie A5E big-cluster OPP candidates
+
+Use only the Radxa A5E BSP A523-family VF points whose voltage is
+identical and nonzero in all eleven bins. This does not add a voltage
+for the stock nominal 768 MHz U-Boot handoff. Keep cpu0-3 and the shared
+little-CPU/DSU rail untouched.
+
+Board supply evidence: radxa/allwinner-device a23224f1c1764,
+configs/cubie_a5e/linux-5.15/board.dts (CPU4 external DCDC1).
+Operating-point evidence: radxa/allwinner-bsp 2045a3ca2a01,
+configs/linux-5.15/sun55iw3p1.dtsi (cluster1_opp_table).
+In the mainline A5E DTS external DCDC1 is reg_dcdc1_323.
+
+Separate research build only. Activation is guarded in the CPUFreq
+driver; an unlisted boot rate must not cause an automatic transition.
+
+--- a/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
++++ b/arch/arm64/boot/dts/allwinner/sun55i-a527-cubie-a5e.dts
+@@ -198,6 +198,52 @@
+ 	rx-internal-delay-ps = <400>;
+ 
+ 	status = "okay";
++};
++
++/ {
++	/* Radxa BSP OPPs common to all eleven VF bins, cluster 1 only. */
++	a5e_big_opp_table: opp-table-big {
++		compatible = "operating-points-v2";
++		opp-shared;
++
++		opp-408000000 {
++			opp-hz = /bits/ 64 <408000000>;
++			opp-microvolt = <900000>;
++			clock-latency-ns = <244144>;
++		};
++
++		opp-1488000000 {
++			opp-hz = /bits/ 64 <1488000000>;
++			opp-microvolt = <1000000>;
++			clock-latency-ns = <244144>;
++		};
++
++		opp-1584000000 {
++			opp-hz = /bits/ 64 <1584000000>;
++			opp-microvolt = <1050000>;
++			clock-latency-ns = <244144>;
++		};
++	};
++};
++
++&cpu4 {
++	cpu-supply = <&reg_dcdc1_323>;
++	operating-points-v2 = <&a5e_big_opp_table>;
++};
++
++&cpu5 {
++	cpu-supply = <&reg_dcdc1_323>;
++	operating-points-v2 = <&a5e_big_opp_table>;
++};
++
++&cpu6 {
++	cpu-supply = <&reg_dcdc1_323>;
++	operating-points-v2 = <&a5e_big_opp_table>;
++};
++
++&cpu7 {
++	cpu-supply = <&reg_dcdc1_323>;
++	operating-points-v2 = <&a5e_big_opp_table>;
+ };
+ 
+ &gpu {
