@@ -1,0 +1,43 @@
+# Cubie A5E: official-base AIC8800 experiment
+
+**Bench build only.** This is a derivative based on OpenWrt commit
+`f8145e65458fba52e360bbdb358be42939eb557f` (snapshot
+`r38527-f8145e6545`, `sunxi/cortexa53`, Linux 6.18.64), not an official
+OpenWrt image. No changes to the official U-Boot/DRAM configuration, and no
+SPI/eMMC/NVMe installer. Test on a spare microSD. Do not use sysupgrade on an
+existing installation.
+
+The port keeps the original Cubie Wi-Fi power sequence (PM1, 200 ms and
+BLDO1 1.8 V) and the AIC8800 SDIO driver and firmware, including the driver
+clock fix that preserves the host's 35 MHz cap. Bluetooth is out of scope.
+The patched DTS is in the FIT image; installing a driver APK alone does
+not apply it. Use only packages built for the kernel/ABI of the image on
+which they will be installed. The source-build image includes its driver;
+do not mix its kernel modules with the rolling upstream APK feed.
+
+## Bench check
+
+1. Download the ext4 microSD artifact and verify its SHA-256 against the
+   corresponding `SHA256SUMS`. On a spare card test with Ethernet and, if
+   possible, UART connected; leave persistent storage unmodified.
+2. Keep board revision, DRAM, power supply and card fixed. Record five
+   cold starts and three software reboots individually for a first pass.
+   Confirm the wired baseline, then SDIO enumeration on `4021000.mmc`,
+   firmware initialization, and appearance of a wireless PHY. A PHY
+   appearing does not establish that AP or STA works.
+3. Check an isolated WPA2 AP and STA separately using the local regulatory
+   domain. Confirm client DHCP, LAN ping and sustained traffic. Record any
+   `-110`/CRC error and save the full boot log, including UART when a
+   cold boot or DRAM initialization fails.
+
+Useful read-only capture:
+
+```sh
+ubus call system board
+uname -r
+grep ' / ' /proc/mounts
+for h in /sys/class/mmc_host/mmc*; do readlink -f "$h/device"; done
+dmesg | grep -Ei 'aic|sdio|4021000|firmware|error -110'
+iw dev
+wifi status
+```
