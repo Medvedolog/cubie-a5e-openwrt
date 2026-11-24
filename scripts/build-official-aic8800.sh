@@ -289,6 +289,7 @@ if [[ "$variant" == pwrseq-950 ]]; then
   if [[ "$installer" == 1 ]]; then
     {
       for setting in CONFIG_BLK_DEV_NVME=y CONFIG_NVME_CORE=y \
+          '# CONFIG_NVME_HWMON is not set' \
           '# CONFIG_NVME_MULTIPATH is not set' CONFIG_EXT4_FS=y CONFIG_MSDOS_PARTITION=y CONFIG_PCIE_SUN55I_RC=y \
           CONFIG_AW_INNO_COMBOPHY=y CONFIG_MTD=y CONFIG_MTD_SPI_NOR=y \
           CONFIG_SPI=y CONFIG_SPI_SUN6I=y; do

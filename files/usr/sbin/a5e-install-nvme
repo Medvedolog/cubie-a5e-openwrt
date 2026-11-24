@@ -193,8 +193,22 @@ check_target() {
         if awk -v mm="$mm" '$3==mm {found=1} END {exit !found}' /proc/1/mountinfo /proc/self/mountinfo; then
             die "target or partition is mounted (${block##*/})"
         fi
+        # Some filesystems expose an anonymous mount superblock device. Also
+        # resolve block-device sources, and inspect multi-device Btrfs members.
+        sources=$(awk '{for(i=7;i<=NF;i++) if($i=="-" && $(i+2) ~ /^\/dev\//){print $(i+2);break}}' \
+            /proc/1/mountinfo /proc/self/mountinfo) || die "cannot read mount sources"
+        for source in $sources; do
+            source=$(printf '%b' "$source")
+            if [ -b "$source" ] && [ "$(node_mm "$source")" = "$mm" ]; then
+                die "target or partition backs an active mount (${block##*/})"
+            fi
+        done
+        for member in /sys/fs/btrfs/*/devices/"${block##*/}"; do
+            [ ! -e "$member" ] || die "target or partition is an active Btrfs member"
+        done
         while read -r swap _; do
             case "$swap" in /dev/*) ;; *) continue ;; esac
+            swap=$(printf '%b' "$swap")
             if [ -b "$swap" ] && [ "$(node_mm "$swap")" = "$mm" ]; then
                 die "target or partition is active swap (${block##*/})"
             fi
