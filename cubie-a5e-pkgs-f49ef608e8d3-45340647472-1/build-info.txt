@@ -1,0 +1,8 @@
+project_commit=f49ef608e8d3c3fadd3674401145bafb5215effe
+upstream_commit=f8145e65458fba52e360bbdb358be42939eb557f
+feed_base=https://raw.githubusercontent.com/Medvedolog/cubie-a5e-openwrt/apk-feed/cubie-a5e-pkgs-f49ef608e8d3-45340647472-1
+feed=https://raw.githubusercontent.com/Medvedolog/cubie-a5e-openwrt/apk-feed/cubie-a5e-pkgs-f49ef608e8d3-45340647472-1/packages.adb
+kernel_apk=6.18.64~c58c2e74042517ce29b1b8e64af00c34-r1
+target=sunxi/cortexa53
+profile=radxa_cubie-a5e
+package_count=151
