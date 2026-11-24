@@ -47,6 +47,8 @@ jobs:
           if dpkg -s libyaml-dev >/dev/null 2>&1; then
             sudo apt-get remove -y libyaml-dev
           fi
+      - name: Test LuCI image checker with ext4 fixtures
+        run: python3 scripts/tests/test_check_official_aic8800.py
       - name: Build pinned sunxi/cortexa53 image with AIC8800 and PM1 pwrseq
         env:
           APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}

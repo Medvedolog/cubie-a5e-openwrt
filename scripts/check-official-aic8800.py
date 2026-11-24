@@ -38,7 +38,12 @@ def verify_luci(ext4):
     for theme in ("footstrap", "bootstrap"):
         for asset in (f"/www/luci-static/{theme}/cascade.css",
                       f"/usr/share/ucode/luci/template/themes/{theme}/header.ut"):
-            require(bool(command("debugfs", "-R", f"cat {asset}", ext4)), f"missing LuCI asset {asset}")
+            # LuCI can install compiled ucode templates under the .ut name.
+            # Inspect the inode without treating the resource bytes as text.
+            stat = command("debugfs", "-R", f"stat {asset}", ext4)
+            require(re.search(r"\bType:\s+regular\b", stat)
+                    and re.search(r"\bSize:\s+[1-9][0-9]*\b", stat),
+                    f"missing, empty or non-regular LuCI asset {asset}")
     # debugfs returns success even when a requested path does not exist.
     status = command("debugfs", "-R", "stat /etc/rc.d/S50uhttpd", ext4)
     require("Type: symlink" in status and "init.d/uhttpd" in status,
