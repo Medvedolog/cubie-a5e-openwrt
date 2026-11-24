@@ -33,6 +33,8 @@ jobs:
           if dpkg -s libyaml-dev >/dev/null 2>&1; then
             sudo apt-get remove -y libyaml-dev
           fi
+      - name: Test LuCI image checker with ext4 fixtures
+        run: python3 scripts/tests/test_check_official_aic8800.py
       - name: Build and inspect opt-in Cubie A5E DVFS bench
         env:
           A5E_CPU_DVFS_BENCH: "1"
