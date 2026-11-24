@@ -1,0 +1,32 @@
+From: Cubie A5E OpenWrt project
+Subject: [PATCH] sunxi: build NVMe root and SPI NOR into the A5E installer kernel
+
+Apply only to the isolated official-base installer build. PCIe host, PHY,
+SPI and SPI_SUN6I already come from the pinned OpenWrt target configuration.
+
+--- a/target/linux/sunxi/cortexa53/config-6.18
++++ b/target/linux/sunxi/cortexa53/config-6.18
+@@ -40,6 +40,7 @@
+ # CONFIG_ARM_SMMU_V3 is not set
+ CONFIG_AUDIT_ARCH_COMPAT_GENERIC=y
+ CONFIG_AW_INNO_COMBOPHY=y
++CONFIG_BLK_DEV_NVME=y
+ CONFIG_BUILTIN_RETURN_ADDRESS_STRIPS_PAC=y
+ CONFIG_CC_HAVE_SHADOW_CALL_STACK=y
+ CONFIG_CC_HAVE_STACKPROTECTOR_SYSREG=y
+@@ -94,11 +95,15 @@
+ CONFIG_MMU_LAZY_TLB_REFCOUNT=y
+ CONFIG_MODULES_USE_ELF_RELA=y
+ CONFIG_MOTORCOMM_PHY=y
++CONFIG_MTD=y
+ CONFIG_MTD_SPI_NAND=y
++CONFIG_MTD_SPI_NOR=y
+ CONFIG_MUSB_PIO_ONLY=y
+ CONFIG_NEED_SG_DMA_LENGTH=y
+ CONFIG_NOP_USB_XCEIV=y
+ CONFIG_NO_IOPORT_MAP=y
++CONFIG_NVME_CORE=y
++# CONFIG_NVME_MULTIPATH is not set
+ CONFIG_PAGE_SIZE_LESS_THAN_256KB=y
+ CONFIG_PAGE_SIZE_LESS_THAN_64KB=y
+ CONFIG_PARTITION_PERCPU=y

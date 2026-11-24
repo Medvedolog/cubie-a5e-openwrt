@@ -11,6 +11,11 @@ case "$variant" in
   pwrseq-950|stock-dtb) ;;
   *) echo "expected pwrseq-950 or stock-dtb" >&2; exit 2 ;;
 esac
+installer=${A5E_NVME_INSTALLER:-0}
+case "$installer" in
+  0|1) ;;
+  *) echo "A5E_NVME_INSTALLER must be 0 or 1" >&2; exit 2 ;;
+esac
 : "${APK_SIGN_KEY:?Existing APK_SIGN_KEY is required for this signed build}"
 [[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]]
 [[ "${GITHUB_REPOSITORY:-}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
@@ -59,7 +64,7 @@ openssl ec -in private-key.pem -pubout >public-key.pem 2>/dev/null
 openssl ec -pubin -in public-key.pem -text -noout | grep -Eq 'ASN1 OID: prime256v1$'
 # Override the generator used by both base-files and the non-standalone
 # ImageBuilder so neither can silently pull kmods from a rolling Snapshot.
-python3 - "$feed_url" <<'OPENWRT_PATCH'
+python3 - "$feed_url" "$installer" <<'OPENWRT_PATCH'
 from pathlib import Path
 import re
 import sys
@@ -77,16 +82,27 @@ feeds.write_text(source)
 profile = Path("target/linux/sunxi/image/cortexa53.mk")
 source = profile.read_text()
 def add_profile_packages(match):
+    installer_extra = " a5e-nvme-installer" if sys.argv[2] == "1" else ""
     return (match[1]
             + "  DEVICE_PACKAGES += kmod-aic8800-sdio aic8800-sdio-firmware "
             + "wpad-mbedtls -wpad-basic-mbedtls aic8800-recovery "
-            + "luci luci-theme-footstrap luci-theme-bootstrap luci-app-a5e-board\n"
+            + "luci luci-theme-footstrap luci-theme-bootstrap luci-app-a5e-board"
+            + installer_extra + "\n"
             + match[2])
 source, n = re.subn(r"(^define Device/radxa_cubie-a5e\n.*?)(^endef$)", add_profile_packages,
                     source, flags=re.M | re.S)
 if n != 1:
     raise SystemExit("Upstream Cubie A5E profile changed")
 profile.write_text(source)
+if sys.argv[2] == "1":
+    # Do not select BUSYBOX_CUSTOM, change only this one pinned
+    # default so the remaining stock OpenWrt applets stay unchanged.
+    busybox = Path("package/utils/busybox/Config-defaults.in")
+    source = busybox.read_text()
+    old = "config BUSYBOX_DEFAULT_FLASHCP\n\tbool\n\tdefault n\n"
+    if source.count(old) != 1:
+        raise SystemExit("Upstream BusyBox flashcp default changed")
+    busybox.write_text(source.replace(old, old.replace("default n", "default y")))
 OPENWRT_PATCH
 test ! -e package/kernel/aic8800
 cp -a "$repo/package/kernel/aic8800" package/kernel/
@@ -131,6 +147,23 @@ if [[ "$variant" == pwrseq-950 ]]; then
   test ! -e "$patch_dir/$patch_name"
   cp "$repo/$patch_dir/$patch_name" "$patch_dir/"
 fi
+if [[ "$installer" == 1 ]]; then
+  installer_pkg=package/utils/a5e-nvme-installer
+  test ! -e "$installer_pkg"
+  cp -a "$repo/$installer_pkg" "$installer_pkg"
+  mkdir "$installer_pkg/files"
+  install -m 0755 "$repo/files/usr/sbin/a5e-install-nvme" "$installer_pkg/files/a5e-install-nvme"
+  sh -n "$installer_pkg/files/a5e-install-nvme"
+
+  kernel_patch="$repo/patches/openwrt/0004-cubie-a5e-installer-nvme-spi-builtins.patch"
+  git apply --check "$kernel_patch"
+  git apply "$kernel_patch"
+  patch_name=951-arm64-dts-a5e-spi-nor-installer.patch
+  test -f "$patch_dir/404-arm64-dts-allwinner-sun55i-Add-SPI-controllers.patch"
+  test -f "$patch_dir/804-arm64-dts-allwinner-a527-cubie-a5e-enable-PCIe-USB-C.patch"
+  test ! -e "$patch_dir/$patch_name"
+  cp "$repo/$patch_dir/$patch_name" "$patch_dir/"
+fi
 # Exact official feeds.buildinfo (downloaded and verified on 2026-11-23).
 cp "$repo/config/feeds.official-r38527.conf" feeds.conf
 {
@@ -165,6 +198,12 @@ printf 'luci_upstream_commit=%s\n' "$luci_revision" | tee -a "$logs/luci-default
 git -C feeds/luci diff -- modules/luci-base/root/etc/config/luci | tee -a "$logs/luci-default-theme.log"
 
 cp "$repo/config/diffconfig.official-aic8800" .config
+if [[ "$installer" == 1 ]]; then
+  # Replace, not duplicate, the common partition size in the config seed.
+  grep -Fx CONFIG_TARGET_ROOTFS_PARTSIZE=256 .config
+  sed -i '/^CONFIG_TARGET_ROOTFS_PARTSIZE=/d' .config
+  cat "$repo/config/diffconfig.official-a5e-nvme-installer" >>.config
+fi
 make defconfig 2>&1 | tee "$logs/defconfig.log"
 for setting in \
     CONFIG_TARGET_sunxi_cortexa53_DEVICE_radxa_cubie-a5e=y \
@@ -179,6 +218,22 @@ for setting in \
   grep -Fx "$setting" .config
 done
 grep -Fx '# CONFIG_IB_STANDALONE is not set' .config
+if [[ "$installer" == 1 ]]; then
+  for setting in CONFIG_TARGET_ROOTFS_PARTSIZE=2048 \
+      CONFIG_PACKAGE_a5e-nvme-installer=y CONFIG_PACKAGE_parted=y \
+      CONFIG_PACKAGE_e2fsprogs=y CONFIG_PACKAGE_resize2fs=y \
+      '# CONFIG_BUSYBOX_CUSTOM is not set' \
+      CONFIG_BUSYBOX_DEFAULT_CMP=y CONFIG_BUSYBOX_DEFAULT_DD=y \
+      CONFIG_BUSYBOX_DEFAULT_FEATURE_DD_IBS_OBS=y CONFIG_BUSYBOX_DEFAULT_GZIP=y \
+      CONFIG_BUSYBOX_DEFAULT_FEATURE_GZIP_DECOMPRESS=y CONFIG_BUSYBOX_DEFAULT_FLASHCP=y \
+      CONFIG_BUSYBOX_DEFAULT_HEAD=y CONFIG_BUSYBOX_DEFAULT_FEATURE_FANCY_HEAD=y \
+      CONFIG_BUSYBOX_DEFAULT_MKTEMP=y CONFIG_BUSYBOX_DEFAULT_READLINK=y \
+      CONFIG_BUSYBOX_DEFAULT_FEATURE_READLINK_FOLLOW=y CONFIG_BUSYBOX_DEFAULT_SHA256SUM=y; do
+    grep -Fx "$setting" .config
+  done
+else
+  grep -Fx CONFIG_TARGET_ROOTFS_PARTSIZE=256 .config
+fi
 if grep -Fxq CONFIG_AIC8800_SDIO_BT_SUPPORT=y .config; then
   echo "refusing untested SDIO Bluetooth configuration" >&2
   exit 2
@@ -231,10 +286,28 @@ if [[ "$variant" == pwrseq-950 ]]; then
     echo "RESET_GPIO is incompatible with this three-cell PM1 GPIO sequence" >&2
     exit 2
   fi
+  if [[ "$installer" == 1 ]]; then
+    {
+      for setting in CONFIG_BLK_DEV_NVME=y CONFIG_NVME_CORE=y \
+          '# CONFIG_NVME_MULTIPATH is not set' CONFIG_EXT4_FS=y CONFIG_MSDOS_PARTITION=y CONFIG_PCIE_SUN55I_RC=y \
+          CONFIG_AW_INNO_COMBOPHY=y CONFIG_MTD=y CONFIG_MTD_SPI_NOR=y \
+          CONFIG_SPI=y CONFIG_SPI_SUN6I=y; do
+        grep -Fx "$setting" "${kernel_cfg[0]}" || {
+          printf 'Missing installer kernel setting: %s\n' "$setting" >&2
+          exit 2
+        }
+      done
+    } | tee "$logs/check-nvme-kernel-config.log"
+  fi
+fi
+installer_flags=()
+if [[ "$installer" == 1 ]]; then
+  installer_flags+=(--require-nvme-installer)
 fi
 python3 "$repo/scripts/check-official-aic8800.py" "$release" "$variant" \
-  --feed-url "$feed_url" --public-key "$src/public-key.pem" --require-luci-footstrap --require-aic-recovery --require-board-ui 2>&1 | tee "$logs/check-image.log"
-bash "$repo/scripts/prepare-official-aic8800-bundles.sh" "$repo" "$artifacts" "$feed_url" "$logs"
+  --feed-url "$feed_url" --public-key "$src/public-key.pem" --require-luci-footstrap --require-aic-recovery --require-board-ui \
+  "${installer_flags[@]}" 2>&1 | tee "$logs/check-image.log"
+bash "$repo/scripts/prepare-official-aic8800-bundles.sh" "$repo" "$artifacts" "$feed_url" "$logs" "${installer_flags[@]}"
 mkdir -p "$out"
 cp "$release"/*radxa_cubie-a5e-{ext4,squashfs}-sdcard.img.gz \
    "$release"/*.manifest "$out/"
@@ -246,6 +319,9 @@ cp .config "$out/config.resolved"
     "$upstream" "$reference" "$variant"
   printf 'feed=%s\nluci_default_theme=footstrap\nluci_upstream_commit=%s\naic_recovery=manual\nluci_board_ui=a5e\n' "$feed_url" "$luci_revision"
   printf 'project_commit=%s\nhardware_status=NOT_TESTED\n' "$(git -C "$repo" rev-parse HEAD)"
+  if [[ "$installer" == 1 ]]; then
+    printf 'image_role=nvme-installer-base\nrootfs_partsize_mib=2048\n'
+  fi
 } >"$out/BUILD-METADATA.txt"
 (cd "$out" && sha256sum *.img.gz *.manifest check-image.log feeds.buildinfo config.resolved \
   BUILD-METADATA.txt >SHA256SUMS && sha256sum -c SHA256SUMS)

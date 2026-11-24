@@ -9,6 +9,8 @@ repo="$1"
 artifacts="$2"
 feed_url="$3"
 logs="$4"
+shift 4
+installer_flags=("$@")
 feed="$artifacts/signed-feed"
 builder="$artifacts/imagebuilder"
 
@@ -98,7 +100,7 @@ make -C "$ib" image PROFILE=radxa_cubie-a5e ROOTFS_FILESYSTEM=ext4 \
 }
 python3 "$repo/scripts/check-official-aic8800.py" "$ib/bin/targets/sunxi/cortexa53" pwrseq-950 \
   --filesystem ext4 --feed-url "$feed_url" --public-key "$public_key" --require-luci-footstrap --require-aic-recovery --require-board-ui \
-  2>&1 | tee "$logs/check-imagebuilder.log"
+  "${installer_flags[@]}" 2>&1 | tee "$logs/check-imagebuilder.log"
 cp "${archives[0]}" "$builder/${archives[0]##*/}"
 (cd "$builder" && sha256sum *.tar.zst >SHA256SUMS && sha256sum -c SHA256SUMS)
 echo "Verified exact signed AIC8800 feed and same-run ImageBuilder (local feed smoke image): $kernel_abi"

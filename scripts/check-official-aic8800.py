@@ -24,6 +24,8 @@ def require(ok, info):
 
 
 LUCI_PACKAGES = {"luci", "luci-base", "uhttpd", "luci-theme-footstrap", "luci-theme-bootstrap"}
+NVME_PACKAGES = {"a5e-nvme-installer", "parted", "e2fsprogs", "resize2fs"}
+NVME_ROOT_BYTES = 2048 * 1024 * 1024
 
 
 def verify_luci(ext4):
@@ -86,8 +88,51 @@ def verify_board_ui(ext4):
         require(bool(command("debugfs", "-R", f"cat {path}", ext4)), f"missing A5E board view {path}")
 
 
+def verify_nvme_dtb(dtb, base):
+    spi = base + "/spi@4025000"
+    flash = spi + "/flash@0"
+    pcie = base + "/pcie@4800000"
+    require(fdt(dtb, pcie, "status") == "okay", "A5E PCIe host enabled for NVMe")
+    require(fdt(dtb, spi, "status") == "okay", "A5E SPI0 host enabled")
+    require(fdt(dtb, spi, "compatible") == "allwinner,sun55i-a523-spi",
+            "A5E SPI0 controller identity")
+    require(fdt(dtb, flash, "compatible") == "jedec,spi-nor"
+            and fdt(dtb, flash, "reg", "u") == "0",
+            "A5E boot SPI NOR on CS0")
+    properties = set(command("fdtget", "-p", dtb, flash).split())
+    require("read-only" not in properties and not command("fdtget", "-l", dtb, flash),
+            "whole SPI NOR exposed without fixed partitions")
+
+
+def verify_nvme_rootfs(ext4):
+    stats = command("debugfs", "-R", "stats", ext4)
+    block_count = re.search(r"(?m)^Block count:\s+([0-9]+)\s*$", stats)
+    block_size = re.search(r"(?m)^Block size:\s+([0-9]+)\s*$", stats)
+    require(block_count and block_size
+            and int(block_count[1]) * int(block_size[1]) == NVME_ROOT_BYTES,
+            "expected 2 GiB ext4 installer base")
+    for path in ("/usr/sbin/a5e-install-nvme", "/sbin/parted", "/sbin/partprobe",
+                 "/usr/sbin/e2fsck", "/usr/sbin/resize2fs"):
+        stat = command("debugfs", "-R", f"stat {path}", ext4)
+        require("Type: regular" in stat and re.search(r"\bMode:\s+0755\b", stat),
+                f"missing executable NVMe installer dependency {path}")
+    stat = command("debugfs", "-R", "stat /usr/sbin/flashcp", ext4)
+    require("Type: symlink" in stat and "busybox" in stat, "BusyBox flashcp applet")
+    installer = command("debugfs", "-R", "cat /usr/sbin/a5e-install-nvme", ext4)
+    require(all(x in installer for x in ("--check", "--install", "--flash-spi")),
+            "NVMe installer exposes explicit manual commands")
+    for path in ("/etc/init.d/a5e-install-nvme", "/etc/uci-defaults/70-a5e-expand-ext4",
+                 "/opt/a5e-installer"):
+        inode = subprocess.check_output(
+            ["debugfs", "-R", f"stat {path}", str(ext4)], text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        require(not inode, f"unexpected storage hook or staged payload at {path}")
+
+
 def verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key,
-                  require_luci=False, require_recovery=False, require_board=False):
+                  require_luci=False, require_recovery=False, require_board=False,
+                  require_nvme=False):
     ext4 = tmp / "root.ext4"
     # Avoid copying any padding or data past the root partition.
     with disk.open("rb") as read, ext4.open("wb") as write:
@@ -115,10 +160,12 @@ def verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key,
         verify_aic_recovery(ext4)
     if require_board:
         verify_board_ui(ext4)
+    if require_nvme:
+        verify_nvme_rootfs(ext4)
 
 
 def verify(image, variant, feed_url=None, public_key=None, require_luci=False,
-           require_recovery=False, require_board=False):
+           require_recovery=False, require_board=False, require_nvme=False):
     with tempfile.TemporaryDirectory(prefix="cubie-a5e-image-") as folder:
         tmp = Path(folder)
         disk, fit, dtb = [tmp / name for name in ("disk.img", "uImage", "board.dtb")]
@@ -129,7 +176,12 @@ def verify(image, variant, feed_url=None, public_key=None, require_luci=False,
         require(len(parts) == 2, "expected boot and root partitions")
         boot, root = parts
         require(root["start"] > boot["start"] and root["size"] > 0, "partition layout")
-        offset = boot["start"] * table.get("sectorsize", 512)
+        sector_size = table.get("sectorsize", 512)
+        if require_nvme:
+            require(table["label"] == "dos" and sector_size == 512
+                    and root["size"] * sector_size == NVME_ROOT_BYTES,
+                    "2 GiB root partition in 512-byte-sector MBR image")
+        offset = boot["start"] * sector_size
         subprocess.run(["mcopy", "-i", f"{disk}@@{offset}", "::uImage", str(fit)], check=True)
         images = command("fdtget", "-l", fit, "/images").split()
         nodes = [name for name in images if name.startswith("fdt")]
@@ -156,9 +208,11 @@ def verify(image, variant, feed_url=None, public_key=None, require_luci=False,
         else:
             require(not ({"mmc-pwrseq", "vqmmc-supply"} & props),
                     "stock DTB must lack custom SDIO power properties")
+        if require_nvme:
+            verify_nvme_dtb(dtb, host.rsplit("/", 1)[0])
         if feed_url and image.name.endswith("-ext4-sdcard.img.gz"):
-            verify_rootfs(disk, tmp, root, table.get("sectorsize", 512),
-                          feed_url, public_key, require_luci, require_recovery, require_board)
+            verify_rootfs(disk, tmp, root, sector_size, feed_url, public_key,
+                          require_luci, require_recovery, require_board, require_nvme)
             print(f"PASS {image.name}: immutable APK feed and matching public key in ext4 rootfs")
             if require_luci:
                 print(f"PASS {image.name}: LuCI starts with Footstrap default and Bootstrap available")
@@ -166,6 +220,8 @@ def verify(image, variant, feed_url=None, public_key=None, require_luci=False,
                 print(f"PASS {image.name}: manual-only AIC8800 recovery present")
             if require_board:
                 print(f"PASS {image.name}: A5E CPU and temperature LuCI board UI present")
+            if require_nvme:
+                print(f"PASS {image.name}: A5E NVMe installer prerequisites: 2 GiB ext4, PCIe, SPI NOR, manual tool")
         print(f"PASS {image.name}: {variant} FIT, SDIO host limited to 35 MHz")
 
 
@@ -179,14 +235,18 @@ def main():
     parser.add_argument("--require-luci-footstrap", action="store_true")
     parser.add_argument("--require-aic-recovery", action="store_true")
     parser.add_argument("--require-board-ui", action="store_true")
+    parser.add_argument("--require-nvme-installer", action="store_true")
     args = parser.parse_args()
     if bool(args.feed_url) != bool(args.public_key):
         parser.error("--feed-url and --public-key must be set together")
     filesystems = args.filesystem or ("ext4", "squashfs")
     if args.feed_url and "ext4" not in filesystems:
         parser.error("signed feed verification requires the ext4 image")
-    if (args.require_luci_footstrap or args.require_aic_recovery or args.require_board_ui) and not args.feed_url:
-        parser.error("LuCI and recovery checks require signed ext4 rootfs verification")
+    if (args.require_luci_footstrap or args.require_aic_recovery or args.require_board_ui
+            or args.require_nvme_installer) and not args.feed_url:
+        parser.error("LuCI, recovery and installer checks require signed ext4 rootfs verification")
+    if args.require_nvme_installer and args.variant != "pwrseq-950":
+        parser.error("installer checks require the pwrseq-950 variant")
     device = list(args.build_output.glob("*-radxa_cubie-a5e.manifest"))
     common = list(args.build_output.glob("*-sunxi-cortexa53.manifest"))
     candidates = device or common
@@ -200,11 +260,14 @@ def main():
         expected.add("aic8800-recovery")
     if args.require_board_ui:
         expected.add("luci-app-a5e-board")
+    if args.require_nvme_installer:
+        expected |= NVME_PACKAGES
     require(expected <= packages, f"missing packages: {sorted(expected-packages)}")
     for fs in filesystems:
         image, = args.build_output.glob(f"*radxa_cubie-a5e-{fs}-sdcard.img.gz")
         verify(image, args.variant, args.feed_url, args.public_key,
-               args.require_luci_footstrap, args.require_aic_recovery, args.require_board_ui)
+               args.require_luci_footstrap, args.require_aic_recovery, args.require_board_ui,
+               args.require_nvme_installer)
     print("PASS image structure and package manifest; hardware status: NOT_TESTED")
 
 

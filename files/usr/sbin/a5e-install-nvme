@@ -1,0 +1,305 @@
+#!/bin/sh
+# Radxa Cubie A5E: offline OpenWrt staging-SD to NVMe installer.
+# Manual invocation only. Changes to SPI are optional and separately confirmed.
+set -eu
+
+PAYLOAD=/opt/a5e-installer
+NVME_GZ="$PAYLOAD/a5e-nvme-openwrt.img.gz"
+SPI_BIN="$PAYLOAD/armbian-u-boot-sunxi-with-spl.bin"
+SPI_SHA=99ad69e2ededdf66fb15accfa003c1ec5986807e50d11d544c17c074682c6e98
+SPI_BYTES=926161
+SSD=''
+FLASH_SPI=0
+CHECK=0
+LC_ALL=C
+export LC_ALL
+
+usage() {
+    cat <<'EOF'
+Usage:
+  a5e-install-nvme --check
+  a5e-install-nvme --install /dev/nvme0n1 [--flash-spi]
+
+--check     Read-only. Checks the board, payload and SPI eligibility.
+--install   Erases ALL data on the selected NVMe disk after confirmation.
+--flash-spi Also backs up the full onboard 16 MiB NOR to microSD, then,
+            after separate confirmation, writes the Armbian bootloader.
+This is an experimental Cubie A5E installer; keep a spare SD and UART/FEL recovery.
+EOF
+}
+die() { echo "ERROR: $*" >&2; exit 1; }
+say() { echo "a5e-installer: $*"; }
+uint() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; }
+hash() { sha256sum "$1" | awk '{print $1}'; }
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --check) [ "$CHECK" -eq 0 ] || die "duplicate --check"; CHECK=1 ;;
+        --install)
+            [ "$#" -ge 2 ] && [ -z "$SSD" ] || die "--install requires one NVMe device"
+            SSD=$2
+            shift ;;
+        --flash-spi) [ "$FLASH_SPI" -eq 0 ] || die "duplicate --flash-spi"; FLASH_SPI=1 ;;
+        --help|-h) [ "$#" -eq 1 ] && [ "$CHECK" -eq 0 ] && [ "$FLASH_SPI" -eq 0 ] && [ -z "$SSD" ] ||
+                       die "use --help alone"
+                   usage; exit 0 ;;
+        *) usage >&2; die "unknown argument $1" ;;
+    esac
+    shift
+done
+if [ "$CHECK" -eq 1 ]; then
+    [ -z "$SSD" ] && [ "$FLASH_SPI" -eq 0 ] || die "--check cannot be combined with write options"
+else
+    printf '%s\n' "$SSD" | grep -Eq '^/dev/nvme[0-9]+n[0-9]+$' ||
+        die "--install must name a whole canonical /dev/nvmeXnY device, not a partition"
+fi
+# OpenWrt BusyBox ash supplies pipefail; never ignore a decompression/read failure.
+(set -o pipefail) 2>/dev/null || die "shell lacks pipefail"
+set -o pipefail
+[ "$(id -u)" = 0 ] || die "root required"
+model=$(tr -d '\000' < /proc/device-tree/model) || die "board model unavailable"
+[ "$model" = "Radxa Cubie A5E" ] || die "refusing to run on another board"
+mem_kib=$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo)
+uint "$mem_kib" && [ "$mem_kib" -gt 3700000 ] && [ "$mem_kib" -lt 4300000 ] ||
+    die "experimental donor is restricted to the 4 GiB Cubie A5E; this does not detect board revision"
+root_mm=$(awk '$5=="/" {for(i=7;i<=NF;i++) if($i=="-"){if($(i+1)=="ext4") print $3; exit}}' /proc/self/mountinfo)
+[ -n "$root_mm" ] && [ -e "/sys/dev/block/$root_mm" ] ||
+    die "expected an ext4 block-device root filesystem"
+root_path=$(readlink -f "/sys/dev/block/$root_mm") || die "root disk unavailable"
+root_part=${root_path##*/}
+printf '%s\n' "$root_part" | grep -Eq '^mmcblk[0-9]+p2$' ||
+    die "installer must be running from microSD partition 2; found $root_part"
+root_disk=${root_part%p2}
+[ "$(cat "/sys/class/block/$root_disk/device/type")" = SD ] ||
+    die "root disk is not a removable SD card (eMMC is not allowed)"
+
+for u in sha256sum gzip dd awk grep head wc stat readlink cmp; do
+    command -v "$u" >/dev/null 2>&1 || die "missing utility: $u"
+done
+for f in "$NVME_GZ" "$SPI_BIN" "$PAYLOAD/IMAGE_BYTES" "$PAYLOAD/IMAGE_SHA256" "$PAYLOAD/SHA256SUMS"; do
+    [ -f "$f" ] && [ ! -L "$f" ] || die "embedded installer payload missing or invalid: $f"
+done
+awk '
+    NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-f]/ {invalid=1}
+    $2 !~ /^(a5e-nvme-openwrt[.]img[.]gz|armbian-u-boot-sunxi-with-spl[.]bin|IMAGE_BYTES|IMAGE_SHA256)$/ {invalid=1}
+    ++seen[$2] != 1 {invalid=1}
+    END {exit (invalid || NR != 4)}
+' "$PAYLOAD/SHA256SUMS" || die "unexpected embedded manifest"
+(cd "$PAYLOAD" && sha256sum -c SHA256SUMS) || die "payload checksum mismatch"
+[ "$(wc -c < "$SPI_BIN")" -eq "$SPI_BYTES" ] && [ "$(hash "$SPI_BIN")" = "$SPI_SHA" ] ||
+    die "Armbian bootloader does not match the pinned Cubie A5E donor"
+[ "$(dd if="$SPI_BIN" bs=1 skip=4 count=8 2>/dev/null)" = eGON.BT0 ] ||
+    die "invalid Armbian U-Boot eGON image"
+image_bytes=$(cat "$PAYLOAD/IMAGE_BYTES")
+uint "$image_bytes" && [ "${#image_bytes}" -le 11 ] && [ "$image_bytes" -gt 0 ] &&
+    [ "${image_bytes#0}" = "$image_bytes" ] &&
+    [ "$(( image_bytes % 512 ))" -eq 0 ] || die "invalid payload byte length"
+actual_size=$(gzip -dc "$NVME_GZ" | wc -c) || die "damaged SSD image"
+[ "$actual_size" -eq "$image_bytes" ] || die "decompressed image length mismatch"
+image_hash=$(cat "$PAYLOAD/IMAGE_SHA256")
+printf '%s\n' "$image_hash" | grep -Eq '^[0-9a-f]{64}$' || die "invalid raw image hash"
+dd if=/dev/null of=/dev/null bs=1 iflag=count_bytes count=0 2>/dev/null ||
+    die "dd iflag=count_bytes unavailable"
+cmp -n 0 /dev/null /dev/null || die "cmp -n unavailable"
+say "Board: $model; root: $root_part (SD); payload verified ($image_bytes bytes)"
+
+node_mm() {
+    pair=$(stat -c '%t:%T' "$1") || return 1
+    major=${pair%:*}; minor=${pair#*:}
+    case "$pair" in *:*) ;; *) return 1 ;; esac
+    case "$major:$minor" in *[!0-9a-fA-F:]*|:*|*:) return 1 ;; esac
+    printf '%d:%d\n' "$(( 0x$major ))" "$(( 0x$minor ))"
+}
+
+# Require the full, exact board SPI NOR, not whichever device happens to be mtd0.
+find_spi() {
+    selected=''
+    for mtd in /sys/class/mtd/mtd*; do
+        name=${mtd##*/}
+        printf '%s\n' "$name" | grep -Eq '^mtd[0-9]+$' || continue
+        [ ! -e "$mtd/offset" ] || continue
+        [ "$(cat "$mtd/type" 2>/dev/null)" = nor ] || continue
+        [ "$(cat "$mtd/size" 2>/dev/null)" = 16777216 ] || continue
+        for link in "$mtd/device/of_node" "$mtd/of_node"; do
+            node=$(readlink -f "$link") || continue
+            case "$node" in */spi@4025000/flash@0) ;; *) continue ;; esac
+            [ -r "$node/compatible" ] &&
+                (tr '\000' '\n' < "$node/compatible" | grep -qx 'jedec,spi-nor') || continue
+            [ -c "/dev/$name" ] || continue
+            [ "$(node_mm "/dev/$name")" = "$(cat "$mtd/dev")" ] || continue
+            [ -z "$selected" ] || return 1
+            selected="/dev/$name"
+            break
+        done
+    done
+    [ -n "$selected" ] || return 1
+    printf '%s\n' "$selected"
+}
+
+SPI_DEV=''
+if [ "$CHECK" -eq 1 ] || [ "$FLASH_SPI" -eq 1 ]; then
+    SPI_DEV=$(find_spi) || SPI_DEV=''
+    if [ -n "$SPI_DEV" ] && command -v flashcp >/dev/null 2>&1; then
+        say "SPI eligible: $SPI_DEV (onboard whole 16 MiB NOR at SPI0 CS0)"
+    elif [ "$FLASH_SPI" -eq 1 ]; then
+        die "could not verify the onboard SPI NOR or find flashcp; no disk changed"
+    else
+        say "SPI NOT eligible: onboard NOR or flashcp not found; do not request --flash-spi"
+    fi
+fi
+if [ "$CHECK" -eq 1 ]; then
+    for disk in /sys/class/block/nvme*n*; do
+        name=${disk##*/}
+        printf '%s\n' "$name" | grep -Eq '^nvme[0-9]+n[0-9]+$' || continue
+        say "NVMe disk detected: /dev/$name"
+    done
+    say "No storage modified."
+    exit 0
+fi
+
+[ -t 0 ] || die "interactive terminal required; use ssh -t"
+for u in parted partprobe resize2fs e2fsck; do
+    command -v "$u" >/dev/null 2>&1 || die "missing utility before writing: $u"
+done
+lock=/var/lock/a5e-install-nvme
+mkdir -p /var/lock
+mkdir "$lock" || die "another installer is active (or lock needs manual inspection)"
+trap 'rmdir "$lock"' EXIT
+trap 'exit 2' HUP INT TERM
+name=${SSD##*/}
+sys="/sys/class/block/$name"
+
+check_target() {
+    [ -b "$SSD" ] && [ ! -L "$SSD" ] && [ "$(readlink -f "$SSD")" = "$SSD" ] ||
+        die "$SSD is not a canonical block-device node"
+    [ -r "$sys/uevent" ] && grep -qx 'DEVTYPE=disk' "$sys/uevent" &&
+        grep -qx "DEVNAME=$name" "$sys/uevent" || die "NVMe namespace not confirmed by sysfs"
+    [ "$(node_mm "$SSD")" = "$(cat "$sys/dev")" ] || die "target device changed or mismatches sysfs"
+    sectors=$(cat "$sys/size")
+    uint "$sectors" && [ "$sectors" -ge 8388608 ] && [ "$sectors" -le 4294967295 ] &&
+        [ "$(( sectors * 512 ))" -ge "$image_bytes" ] ||
+        die "target too small or larger than supported MBR (4 GiB to <2 TiB)"
+    [ "$(cat "$sys/queue/logical_block_size")" = 512 ] || die "512-byte logical sectors required"
+    [ "$(cat "$sys/ro")" = 0 ] || die "target reports read-only"
+    for block in "$sys" "${sys}"p*; do
+        [ -r "$block/dev" ] || continue
+        mm=$(cat "$block/dev")
+        [ -d "$block/holders" ] || die "missing sysfs holder information"
+        for holder in "$block"/holders/*; do
+            [ ! -e "$holder" ] || die "target block device is held by ${holder##*/}"
+        done
+        [ -r /proc/1/mountinfo ] && [ -r /proc/self/mountinfo ] && [ -r /proc/swaps ] ||
+            die "could not inspect active mounts or swaps"
+        if awk -v mm="$mm" '$3==mm {found=1} END {exit !found}' /proc/1/mountinfo /proc/self/mountinfo; then
+            die "target or partition is mounted (${block##*/})"
+        fi
+        while read -r swap _; do
+            case "$swap" in /dev/*) ;; *) continue ;; esac
+            if [ -b "$swap" ] && [ "$(node_mm "$swap")" = "$mm" ]; then
+                die "target or partition is active swap (${block##*/})"
+            fi
+        done < /proc/swaps
+    done
+}
+
+check_target
+say "TARGET: $SSD — ALL EXISTING DATA WILL BE ERASED"
+printf 'Type ERASE-%s to proceed: ' "$name"
+IFS= read -r answer || die "no confirmation"
+[ "$answer" = "ERASE-$name" ] || die "SSD installation cancelled"
+check_target
+# The target may previously have had GPT. Its secondary header is beyond
+# our MBR payload. Erase exactly that header sector, only after confirmation.
+last=$(( sectors - 1 ))
+last_magic=$(dd if="$SSD" bs=512 skip="$last" count=1 2>/dev/null | head -c 8) ||
+    die "cannot read target last sector; no disk changed"
+if [ "$last_magic" = 'EFI PART' ]; then
+    dd if=/dev/zero of="$SSD" bs=512 seek="$last" count=1 conv=notrunc,fsync ||
+        die "could not remove stale backup GPT; SPI unchanged"
+fi
+sync
+gzip -dc "$NVME_GZ" | dd of="$SSD" bs=4M conv=notrunc,fsync ||
+    die "SSD write failed; SPI unchanged"
+# BusyBox cmp -n stores a signed int; a 2 GiB root plus FAT exceeds that.
+# Use dd's 64-bit count with count_bytes to bound the readback precisely.
+observed_image_hash=$(dd if="$SSD" bs=1M count="$image_bytes" iflag=count_bytes | sha256sum | awk '{print $1}') ||
+    die "SSD image readback failed; SPI unchanged"
+[ "$observed_image_hash" = "$image_hash" ] || die "SSD image readback hash mismatch; SPI unchanged"
+say "SSD image verified byte-for-byte (FAT boot, ext4 root)"
+partprobe "$SSD" >/dev/null 2>&1 || :
+check_target
+
+geometry() {
+    pt=$(parted -m -s "$SSD" unit s print) || die "cannot read target partition table"
+    label=$(printf '%s\n' "$pt" | awk -F: '$1 ~ /^\/dev\// {print $6;exit}')
+    nums=$(printf '%s\n' "$pt" | awk -F: '$1 ~ /^[0-9]+$/ {printf "%s ",$1}')
+    [ "$label" = msdos ] && [ "$nums" = "1 2 " ] || die "unexpected MBR layout; SPI unchanged"
+    p1=$(printf '%s\n' "$pt" | awk -F: '$1=="1" {print $2 ":" $3}')
+    start=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$2);print $2}')
+    end=$(printf '%s\n' "$pt" | awk -F: '$1=="2" {sub(/s$/,"",$3);print $3}')
+    uint "$start" && uint "$end" && [ "$end" -gt "$start" ] || die "invalid ext4 geometry"
+    disk_id=$(dd if="$SSD" bs=1 skip=440 count=4 2>/dev/null | sha256sum | awk '{print $1}') ||
+        die "cannot read MBR disk identifier"
+}
+geometry
+old_start=$start; old_end=$end; old_p1=$p1; old_disk_id=$disk_id
+say "Expanding the unmounted NVMe ext4 root partition..."
+parted -s "$SSD" unit s resizepart 2 100% || die "partition resize failed; SPI unchanged"
+partprobe "$SSD" >/dev/null 2>&1 || :
+geometry
+[ "$start" = "$old_start" ] && [ "$p1" = "$old_p1" ] && [ "$disk_id" = "$old_disk_id" ] &&
+    [ "$end" -ge "$old_end" ] && [ "$end" -lt "$sectors" ] ||
+    die "unexpected geometry or PARTUUID change; SPI unchanged"
+partition="${name}p2"
+rootdev="/dev/$partition"
+expected=$(( end - start + 1 ))
+i=0
+while [ "$i" -lt 12 ]; do
+    if [ -r "/sys/class/block/$partition/size" ] &&
+       [ "$(cat "/sys/class/block/$partition/size")" -eq "$expected" ]; then
+        break
+    fi
+    partprobe "$SSD" >/dev/null 2>&1 || :
+    sleep 1
+    i=$((i + 1))
+done
+[ -b "$rootdev" ] && [ ! -L "$rootdev" ] &&
+    [ "$(node_mm "$rootdev")" = "$(cat "/sys/class/block/$partition/dev")" ] &&
+    [ "$(cat "/sys/class/block/$partition/size")" -eq "$expected" ] ||
+    die "kernel has stale or invalid partition geometry; SPI unchanged"
+check_target
+if e2fsck -f -y "$rootdev"; then
+    :
+else
+    rc=$?
+    [ "$rc" -eq 1 ] || die "ext4 consistency check failed ($rc); SPI unchanged"
+fi
+resize2fs "$rootdev" || die "ext4 growth failed; SPI unchanged"
+sync
+say "NVMe ext4 root expanded."
+parted -m -s "$SSD" unit s print
+
+if [ "$FLASH_SPI" -eq 1 ]; then
+    [ "$(find_spi)" = "$SPI_DEV" ] || die "SPI identity changed; not writing"
+    backup=$(mktemp /root/cubie-a5e-spi-before-nvme.XXXXXX) || die "cannot create SPI backup on microSD"
+    chmod 600 "$backup"
+    dd if="$SPI_DEV" of="$backup" bs=1M count=16 conv=fsync || die "SPI backup failed; not writing"
+    [ "$(wc -c < "$backup")" -eq 16777216 ] && cmp -s "$backup" "$SPI_DEV" ||
+        die "SPI backup incomplete or readback differs; not writing"
+    sha256sum "$backup" > "$backup.sha256" || die "backup checksum failed; not writing"
+    sync
+    say "Full verified SPI backup on microSD: $backup"
+    say "Copy it to a computer. Failed SPI boot may need full FEL recovery; keep UART available."
+    printf 'Type FLASH-SPI-16M to overwrite the onboard SPI bootloader: '
+    IFS= read -r answer || die "no SPI confirmation; SSD installed but SPI untouched"
+    [ "$answer" = FLASH-SPI-16M ] || die "SPI flashing cancelled; SSD installed"
+    [ "$(find_spi)" = "$SPI_DEV" ] && [ "$(hash "$SPI_BIN")" = "$SPI_SHA" ] ||
+        die "SPI or payload changed; not writing"
+    flashcp -v "$SPI_BIN" "$SPI_DEV" || die "SPI write failed; use FEL/UART recovery"
+    cmp -n "$SPI_BYTES" "$SPI_BIN" "$SPI_DEV" ||
+        die "SPI readback differs; do not power-cycle before arranging recovery"
+    say "Armbian SPI bootloader verified. Full previous NOR saved at $backup."
+else
+    say "SPI untouched. NVMe-only boot still requires a compatible firmware in SPI."
+fi
+say "Installation complete. Shut down, then remove the microSD before testing NVMe-only boot."
